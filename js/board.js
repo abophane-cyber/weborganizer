@@ -113,7 +113,8 @@ function categoryEl(cat, pos) {
   const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
   const cardCount = cat.cards.length + cat.groups.reduce((n, g) => n + g.cards.length, 0);
-  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id } },
+  const docked = cat.display === 'dock';
+  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}${docked ? ' docked' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id } },
     h('header', { class: 'category-head' },
       iconEl(cat.icon, cat.name, 'category-icon'),
       collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),
@@ -127,6 +128,7 @@ function categoryEl(cat, pos) {
         editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
       ),
     ),
+    docked && h('p', { class: 'dock-note' }, 'Affichée en ronds sur le côté gauche (visible ici seulement pendant l’édition).'),
     direct,
     cat.groups.map((g, gi) => groupEl(cat, g, gi)),
     h('button', { type: 'button', class: 'add-group edit-only', onclick: () => actions.addGroup(cat.id) },
@@ -313,8 +315,53 @@ function renderFree(root, cfg) {
   }
 }
 
+// ---- Barre latérale : catégories affichées « en ronds sur le côté gauche » ----
+function dockItem(card) {
+  const isChrome = card.type === 'chrome';
+  const url = isChrome ? '' : safeUrl(card.url);
+  const valid = isChrome && PROFILE_DIR_RE.test((card.profileDir || '').trim());
+  const color = /^#[0-9a-f]{6}$/i.test(card.color || '') ? card.color : '';
+  const src = isChrome ? card.photo : (card.icon || faviconFor(url));
+  const email = url ? gmailInfo(url)?.email || '' : '';
+  const name = card.title || email || url || 'Sans titre';
+  const sub = isChrome ? `Profil Chrome · ${card.profileDir || '?'}` : (email || (url ? new URL(url).hostname : ''));
+  const circle = big => h('span', { class: `dock-avatar${big ? ' big' : ''}`, style: color ? { '--card-bg': color } : null },
+    iconEl(src, name, isMediaRef(src) ? 'avatar-img' : 'avatar-icon'));
+  return h('a', {
+    class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : (url || null),
+    target: !isChrome && url ? '_blank' : null, rel: 'noopener noreferrer', 'aria-label': name,
+    onclick: isChrome ? e => { e.preventDefault(); openChromeProfile(card); } : null,
+  },
+    circle(false),
+    card.badge && h('span', { class: 'dock-badge' }, card.badge),
+    // Fiche affichée au survol, à droite du rond.
+    h('span', { class: 'dock-card', role: 'tooltip' },
+      circle(true),
+      h('span', { class: 'dock-name' }, name),
+      sub && h('span', { class: 'dock-sub' }, sub),
+      card.badge && h('span', { class: 'badge' }, card.badge),
+    ),
+  );
+}
+
+function renderDock(cfg) {
+  const dock = document.getElementById('dock');
+  if (!dock) return;
+  const cats = cfg.categories.filter(c => c.display === 'dock');
+  const items = cats.map(cat => [
+    ...cat.cards, ...cat.groups.flatMap(g => g.cards),
+  ]).filter(list => list.length);
+  dock.hidden = items.length === 0;
+  document.body.classList.toggle('has-dock', items.length > 0);
+  dock.replaceChildren(...items.flatMap((list, i) => [
+    i > 0 && h('span', { class: 'dock-sep', 'aria-hidden': 'true' }),
+    ...list.map(dockItem),
+  ]).filter(Boolean));
+}
+
 export function renderBoard(root) {
   const cfg = store.get();
+  renderDock(cfg);
   root.classList.toggle('board-free', cfg.theme.layout === 'free');
   if (cfg.theme.layout === 'free') {
     renderFree(root, cfg);

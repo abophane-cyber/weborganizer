@@ -17,21 +17,34 @@ const allCardsCount = cat => cat.cards.length + cat.groups.reduce((n, g) => n + 
 function categoryForm(cat, onSave) {
   const name = h('input', { type: 'text', value: cat.name || '', required: true, maxlength: '60' });
   const icon = imageField('Icône', cat.icon, { emoji: true, icons: true, help: 'Une icône de la bibliothèque, une URL d’image, un fichier ou un emoji. Vide : initiale du nom.' });
+  const dock = h('input', { type: 'checkbox', checked: cat.display === 'dock' });
+  const dockRow = h('div', { class: 'field' },
+    h('label', { class: 'check-row' }, dock, h('span', { class: 'field-label' }, 'Afficher en ronds sur le côté gauche')),
+    h('span', { class: 'field-help' },
+      'Les cartes deviennent des ronds dans une barre fixée au bord gauche ; le survol affiche leur fiche. '
+      + 'Pour les modifier, ouvrez les Paramètres : la catégorie réapparaît dans la page.'));
   openModal({
     title: cat.id ? 'Modifier la catégorie' : 'Nouvelle catégorie',
-    body: [field('Nom', name), icon.el],
+    body: [field('Nom', name), icon.el, dockRow],
     onSubmit: () => {
       if (!name.value.trim()) return 'Le nom est obligatoire.';
-      onSave({ name: name.value.trim(), icon: icon.value });
+      onSave({ name: name.value.trim(), icon: icon.value, display: dock.checked ? 'dock' : undefined });
     },
   });
 }
 
 export function addCategory() {
-  categoryForm({ name: '', icon: '' }, v => store.update(c => c.categories.push({ id: uid(), ...v, cards: [], groups: [] })));
+  categoryForm({ name: '', icon: '' }, v => store.update(c => {
+    const cat = { id: uid(), ...v, cards: [], groups: [] };
+    if (!cat.display) delete cat.display;
+    c.categories.push(cat);
+  }));
 }
 export function editCategory(id) {
-  categoryForm(findCategory(id), v => store.update(() => Object.assign(findCategory(id), v)));
+  categoryForm(findCategory(id), v => store.update(() => {
+    const cat = Object.assign(findCategory(id), v);
+    if (!cat.display) delete cat.display;
+  }));
 }
 export function deleteCategory(id) {
   const cat = findCategory(id);

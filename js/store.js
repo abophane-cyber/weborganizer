@@ -61,6 +61,7 @@ export function normalize(cfg) {
     cat.name ??= 'Catégorie';
     cat.icon ??= '';
     cat.collapsed = !!cat.collapsed;
+    if (cat.display !== 'dock') delete cat.display; // 'dock' : ronds sur le côté gauche
     if (!Number.isInteger(cat.column) || cat.column < 0) delete cat.column;
     if (cat.pos && Number.isFinite(cat.pos.x) && Number.isFinite(cat.pos.y)) {
       cat.pos = { x: Math.min(1, Math.max(0, cat.pos.x)), y: Math.max(0, Math.round(cat.pos.y)) };

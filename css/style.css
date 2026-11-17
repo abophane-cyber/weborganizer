@@ -117,7 +117,50 @@ body.cat-dragging .col-drop { display: block; }
 .board-col.drop-end .col-drop { border-color: var(--accent); background: rgba(110, 168, 254, 0.12); }
 body.searching .col-drop { display: none !important; }
 /* Hors édition, une colonne vide ne prend pas de place. */
-body:not(.editing) .board-col:not(:has(.category)) { display: none; }
+body:not(.editing) .board-col:not(:has(.category:not(.docked))) { display: none; }
+
+/* ---- Barre latérale gauche : catégories « en ronds » ---- */
+.dock {
+  position: fixed; left: 12px; top: 50%; transform: translateY(-50%); z-index: 15;
+  display: flex; flex-direction: column; align-items: center; gap: 12px;
+  padding: 12px 8px; border-radius: 999px; max-height: calc(100vh - 32px); overflow: visible;
+  background: rgba(18, 21, 28, 0.62); border: 1px solid var(--border);
+  backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+}
+body.has-dock .top, body.has-dock .board, body.has-dock .page-footer { padding-left: 92px; }
+.dock-sep { width: 26px; height: 1px; background: rgba(255, 255, 255, 0.18); }
+.dock-item { position: relative; display: block; text-decoration: none; color: #fff; border-radius: 50%; }
+.dock-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.dock-avatar {
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden; display: grid; place-items: center;
+  background: var(--card-bg, rgba(255, 255, 255, 0.14)); border: 2px solid rgba(255, 255, 255, 0.28);
+  transition: transform .12s ease, border-color .12s ease;
+}
+.dock-avatar.big { width: 64px; height: 64px; border-width: 3px; }
+.dock-avatar .icon-fallback { width: 100%; height: 100%; background: transparent; color: #fff; font-size: 17px; border-radius: 50%; }
+.dock-avatar.big .icon-fallback { font-size: 26px; }
+.dock-avatar .icon-glyph { display: grid; place-items: center; width: 100%; height: 100%; color: #fff; }
+.dock-avatar .avatar-icon { width: 24px; height: 24px; }
+.dock-avatar.big .avatar-icon { width: 34px; height: 34px; }
+.dock-item:hover .dock-avatar, .dock-item:focus-visible .dock-avatar { transform: scale(1.08); border-color: #fff; }
+.dock-badge {
+  position: absolute; right: -6px; bottom: -2px; padding: 0 5px; border-radius: 999px;
+  font-size: .62rem; font-weight: 700; background: #e5484d; color: #fff; border: 2px solid #12151c;
+}
+/* Fiche au survol, à droite du rond */
+.dock-card {
+  position: absolute; left: calc(100% + 18px); top: 50%; transform: translate(-6px, -50%);
+  display: grid; justify-items: start; gap: 4px; min-width: 200px; padding: 14px 16px;
+  border-radius: 16px; background: rgba(16, 18, 24, 0.96); border: 1px solid var(--border);
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55); pointer-events: none;
+  opacity: 0; visibility: hidden; transition: opacity .12s ease, transform .12s ease;
+}
+.dock-item:hover .dock-card, .dock-item:focus-visible .dock-card { opacity: 1; visibility: visible; transform: translate(0, -50%); }
+.dock-name { margin-top: 6px; font-weight: 700; font-size: 1.02rem; white-space: nowrap; }
+.dock-sub { color: var(--muted); font-size: .8rem; white-space: nowrap; }
+/* La catégorie « en ronds » n'apparaît dans la page que pendant l'édition. */
+body:not(.editing) .category.docked { display: none !important; }
+.dock-note { margin: 0 0 10px; font-size: .78rem; color: var(--muted); }
 
 /* Disposition libre : les catégories sont posées où l'on veut sur un plan. */
 .board.board-free { align-items: stretch; }
