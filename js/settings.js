@@ -128,8 +128,14 @@ function generalSection() {
     help: 'Image ronde affichée au-dessus du titre. Une URL ou un fichier ; vide : pas de logo.',
     onChange: v => store.update(c => { c.logo = v; }),
   });
+  const recenter = h('button', {
+    type: 'button', class: 'btn small',
+    onclick: () => store.update(c => { c.layout = { logo: { x: 0, y: 0 }, title: { x: 0, y: 0 } }; }),
+  }, 'Recentrer le logo et le titre');
   return section('Général',
     logo.el,
+    h('p', { class: 'muted small' }, 'Le logo et le titre se déplacent à la souris tant que ce panneau est ouvert.'),
+    h('div', { class: 'row' }, recenter),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Titre'), title),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Description'), desc),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Pied de page'), footer),

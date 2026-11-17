@@ -23,6 +23,8 @@ export function defaultConfig() {
     description: 'Ma page d’accueil',
     footer: 'Créé par Sillonphane',
     logo: '',
+    // Décalage (px) du logo et du titre par rapport à leur position centrée.
+    layout: { logo: { x: 0, y: 0 }, title: { x: 0, y: 0 } },
     theme: { accent: '#6ea8fe', panelOpacity: 0.55 },
     background: { src: '', kind: 'image', overlay: 0.35 },
     media: {},
@@ -50,6 +52,8 @@ export function normalize(cfg) {
   const c = { ...d, ...(cfg || {}) };
   c.theme = { ...d.theme, ...(c.theme || {}) };
   c.background = { ...d.background, ...(c.background || {}) };
+  const pos = p => ({ x: Number(p?.x) || 0, y: Number(p?.y) || 0 });
+  c.layout = { logo: pos(c.layout?.logo), title: pos(c.layout?.title) };
   c.media = c.media && typeof c.media === 'object' ? c.media : {};
   c.categories = Array.isArray(c.categories) ? c.categories : [];
   for (const cat of c.categories) {

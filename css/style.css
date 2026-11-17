@@ -46,6 +46,17 @@ button, input, select { font: inherit; color: inherit; }
 .top p { margin: 4px 0 0; color: #e6e9ef; text-shadow: 0 1px 8px rgba(0,0,0,.7); }
 .top .settings-btn { position: absolute; top: 24px; right: clamp(16px, 4vw, 48px); }
 
+/* Logo et titre déplaçables en mode édition */
+.title-block { display: flex; flex-direction: column; align-items: center; position: relative; z-index: 2; }
+.logo { position: relative; z-index: 2; }
+body.editing .movable {
+  cursor: grab; user-select: none; touch-action: none;
+  outline: 2px dashed rgba(255, 255, 255, 0.45); outline-offset: 6px;
+}
+body.editing .title-block { border-radius: 10px; }
+body.editing .movable:hover { outline-color: var(--accent); }
+.movable[data-dragging] { cursor: grabbing; outline-color: var(--accent); }
+
 /* Logo rond au-dessus du titre */
 .logo {
   width: 108px; height: 108px; margin-bottom: 14px; border-radius: 50%; overflow: hidden; flex: none;

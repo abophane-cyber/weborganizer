@@ -19,9 +19,54 @@ function renderLogo(src) {
   box.replaceChildren(src ? imageEl(src, store.get().title, 'logo-img') : '');
 }
 
+// ---- Logo et titre déplaçables (mode édition) ----
+const MOVABLE = { logo: 'logo', title: 'title-block' };
+
+function applyLayout() {
+  const { layout } = store.get();
+  for (const [key, id] of Object.entries(MOVABLE)) {
+    const el = document.getElementById(id);
+    if (el.dataset.dragging) continue; // ne pas gêner un déplacement en cours
+    const { x, y } = layout[key];
+    el.style.translate = x || y ? `${x}px ${y}px` : '';
+  }
+}
+
+function initMovable() {
+  for (const [key, id] of Object.entries(MOVABLE)) {
+    const el = document.getElementById(id);
+    let start = null;
+    el.addEventListener('pointerdown', e => {
+      if (!document.body.classList.contains('editing') || e.button !== 0) return;
+      e.preventDefault();
+      const { x, y } = store.get().layout[key];
+      start = { px: e.clientX, py: e.clientY, x, y };
+      el.dataset.dragging = '1';
+      el.setPointerCapture(e.pointerId);
+    });
+    el.addEventListener('pointermove', e => {
+      if (!start) return;
+      const x = Math.round(start.x + e.clientX - start.px);
+      const y = Math.round(start.y + e.clientY - start.py);
+      el.style.translate = `${x}px ${y}px`;
+      start.cur = { x, y };
+    });
+    const end = () => {
+      if (!start) return;
+      const cur = start.cur;
+      start = null;
+      delete el.dataset.dragging;
+      if (cur) store.update(c => { c.layout[key] = cur; });
+    };
+    el.addEventListener('pointerup', end);
+    el.addEventListener('pointercancel', end);
+  }
+}
+
 function renderHeader() {
   const c = store.get();
   renderLogo(c.logo);
+  applyLayout();
   document.getElementById('title').textContent = c.title;
   document.getElementById('desc').textContent = c.description;
   document.getElementById('footer').textContent = c.footer;
@@ -61,6 +106,7 @@ async function start() {
   render();
   store.subscribe(render);
   initSearch(document.getElementById('search'), document.getElementById('board'));
+  initMovable();
   initSettings();
   await sync.init();
   welcomeBanner();
