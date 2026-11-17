@@ -5,7 +5,7 @@ import { store } from './store.js';
 
 const API = 'https://api.open-meteo.com/v1/forecast';
 const GEO = 'https://geocoding-api.open-meteo.com/v1/search';
-const CACHE_KEY = 'wo.weather.2';
+const CACHE_KEY = 'wo.weather.3';
 const MAX_AGE = 15 * 60 * 1000; // relecture toutes les 15 minutes
 // Tranches horaires des prévisions (heures locales, fin exclue).
 const PERIODS = { matin: [7, 12], aprem: [13, 19] };
@@ -43,11 +43,36 @@ async function fetchForecast(w) {
     current: 'temperature_2m,weather_code,is_day',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
     hourly: 'temperature_2m,weather_code,precipitation_probability',
+    // Météo-France (AROME/ARPEGE) en priorité ; le modèle automatique complète ce
+    // qu'il ne fournit pas (jours 5 à 7, risque de pluie).
+    models: `${MODELS.main},${MODELS.backup}`,
   });
   const res = await fetch(`${API}?${q}`);
   if (!res.ok) throw new Error(`météo indisponible (${res.status})`);
-  return res.json();
+  const raw = await res.json();
+  return { ...raw, daily: mergeModels(raw.daily), hourly: mergeModels(raw.hourly) };
 }
+
+const MODELS = { main: 'meteofrance_seamless', backup: 'best_match' };
+
+// { x_meteofrance_seamless: [...], x_best_match: [...] } -> { x: [...] } :
+// la valeur Météo-France si elle existe, sinon celle du modèle automatique.
+function mergeModels(block) {
+  if (!block) return block;
+  const out = { time: block.time };
+  const names = new Set(Object.keys(block).filter(k => k !== 'time')
+    .map(k => k.replace(new RegExp(`_(${MODELS.main}|${MODELS.backup})$`), '')));
+  for (const name of names) {
+    const a = block[`${name}_${MODELS.main}`] || [];
+    const b = block[`${name}_${MODELS.backup}`] || block[name] || [];
+    out[name] = block.time.map((_, i) => a[i] ?? b[i] ?? null);
+  }
+  return out;
+}
+
+// Liens vers Météo-France : la ville (prévisions détaillées) et la carte des vigilances.
+const mfCityUrl = city => `https://meteofrance.com/recherche/${encodeURIComponent(city.toLowerCase())}`;
+const MF_VIGILANCE = 'https://vigilance.meteofrance.fr/fr';
 
 // Recherche d'une ville : renvoie { city, lat, lon } ou null.
 export async function findCity(name) {
@@ -185,7 +210,12 @@ function renderWeek() {
         ),
       );
     })),
-    h('p', { class: 'wx-source muted' }, 'Source : Open-Meteo'),
+    h('div', { class: 'wx-links' },
+      h('a', { class: 'btn small', href: mfCityUrl(w.city), target: '_blank', rel: 'noopener noreferrer' },
+        `Détail sur Météo-France — ${w.city}`),
+      h('a', { class: 'btn small', href: MF_VIGILANCE, target: '_blank', rel: 'noopener noreferrer' }, 'Vigilances'),
+    ),
+    h('p', { class: 'wx-source muted' }, 'Prévisions Météo-France (AROME, ARPEGE) via Open-Meteo'),
   );
 }
 

@@ -863,3 +863,7 @@ body.palette-nature .cards.view-groups > .card:nth-child(4n+4):not(.colored) { c
 body.editing .top .fullscreen-btn { display: none; }
 .fullscreen-btn .fs-exit, .fullscreen-btn.is-on .fs-enter { display: none; }
 .fullscreen-btn.is-on .fs-exit { display: block; }
+
+/* Fenêtre météo : liens vers Météo-France */
+.wx-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+.wx-links .btn { text-decoration: none; color: var(--text); }
