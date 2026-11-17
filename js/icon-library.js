@@ -4,7 +4,49 @@
 // Cercle en chemin SVG (deux arcs).
 const c = (cx, cy, r) => `M${cx - r} ${cy}a${r} ${r} 0 1 0 ${2 * r} 0a${r} ${r} 0 1 0 ${-2 * r} 0`;
 
+// Pétales disposés en rosace autour du centre (n pétales, du rayon r1 au rayon r2).
+const petals = (n, r1, r2, w = 0.38, cx = 12, cy = 12) => {
+  const pt = (a, r) => `${(cx + r * Math.cos(a)).toFixed(2)} ${(cy + r * Math.sin(a)).toFixed(2)}`;
+  const rm = (r1 + r2) / 2 + 1;
+  let d = '';
+  for (let i = 0; i < n; i++) {
+    const a = -Math.PI / 2 + (i * 2 * Math.PI) / n;
+    d += `M${pt(a, r1)}Q${pt(a - w, rm)} ${pt(a, r2)}Q${pt(a + w, rm)} ${pt(a, r1)}`;
+  }
+  return d;
+};
+
+// Icônes en lien avec la charte « Nature » : proposées en premier dans le choix d'icône.
+export const NATURE_ICONS = [
+  'leaf', 'sprout', 'plant', 'tree', 'pine', 'branch', 'daisy', 'flower', 'lotus', 'mushroom', 'acorn', 'apple',
+  'sun', 'moon', 'rainbow', 'drop', 'wave', 'snowflake', 'feather', 'paw', 'fish', 'hive', 'fire', 'coffee',
+];
+
 export const ICONS = {
+  leaf: ['Feuille nature', 'M5 19C5 10 10 5 20 4c-1 10-6 15-15 15zM5 19l9-9'],
+  sprout: ['Pousse nature jardin', 'M12 21v-9M12 12c0-4-3-6-7-6 0 4 3 6 7 6zM12 10c0-4 3-6 7-6 0 4-3 6-7 6z'],
+  plant: ['Plante en pot jardin', 'M7 14h10l-1.5 7h-7zM12 14V9M12 9c0-3-2-5-5-5 0 3 2 5 5 5zM12 11c0-3 2-5 5-5 0 3-2 5-5 5z'],
+  tree: ['Arbre forêt nature', 'M12 21v-6M12 17l-2.5-2M12 16l2.5-2.5M8 15a4.5 4.5 0 0 1-1.5-8.5 5.5 5.5 0 0 1 11 0A4.5 4.5 0 0 1 16 15z'],
+  pine: ['Sapin forêt montagne', 'M12 3l-5 7h3l-4 6h12l-4-6h3zM12 16v5'],
+  branch: ['Rameau feuillage', 'M5 19L19 5M8 16c-3 0-4-2-4-2s2-2 5-1M11 13c-1-3 0-5 0-5s2 1 2 4M12 12c3 0 4 2 4 2s-2 2-5 1M15 9c-1-3 0-5 0-5s2 1 2 4'],
+  daisy: ['Marguerite fleur', `${c(12, 12, 2.5)}${petals(8, 3.6, 9.6, 0.32)}`],
+  flower: ['Fleur jardin', `${c(12, 9, 2)}${petals(5, 2.6, 7.2, 0.55, 12, 9)}M12 16v5M12 19c-2-2-4-2-5-1M12 19c2-2 4-2 5-1`],
+  lotus: ['Lotus zen bien-être', 'M12 19c-2.5-2-3.5-6.5 0-12 3.5 5.5 2.5 10 0 12zM12 19c-4 0-8-2.5-9-7 3-.5 6 1 7.6 3.5M12 19c4 0 8-2.5 9-7-3-.5-6 1-7.6 3.5'],
+  mushroom: ['Champignon forêt', 'M4 12a8 7 0 0 1 16 0zM10 12v6a2 2 0 0 0 4 0v-6M9 8h.01M14 6.5h.01'],
+  acorn: ['Gland automne', 'M5 10c0-3 3-5 7-5s7 2 7 5zM6 10c0 5 3 9 6 11 3-2 6-6 6-11M12 5V3'],
+  apple: ['Pomme fruit', 'M12 7c-3-2-8-1-8 5 0 5 3 9 5 9 1 0 2-1 3-1s2 1 3 1c2 0 5-4 5-9 0-6-5-7-8-5zM12 7c0-2 1-4 3-4'],
+  sun: ['Soleil météo été', `${c(12, 12, 4)}M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4`],
+  moon: ['Lune nuit', 'M20 14.5A8 8 0 1 1 9.5 4a6.5 6.5 0 0 0 10.5 10.5z'],
+  rainbow: ['Arc-en-ciel', 'M3 18a9 9 0 0 1 18 0M6.5 18a5.5 5.5 0 0 1 11 0M10 18a2 2 0 0 1 4 0'],
+  drop: ['Goutte eau pluie', 'M12 3s6 7 6 11a6 6 0 0 1-12 0c0-4 6-11 6-11z'],
+  wave: ['Vague mer eau', 'M3 9c2-2 4-2 6 0s4 2 6 0 4-2 6 0M3 15c2-2 4-2 6 0s4 2 6 0 4-2 6 0'],
+  snowflake: ['Flocon neige hiver', 'M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M9.5 4.5L12 6l2.5-1.5M9.5 19.5L12 18l2.5 1.5'],
+  feather: ['Plume écriture', 'M20 4C11 4 6 9 6 18M6 18l-2 3M6 18c7 0 12-5 14-14M8 14h6M10 10h6'],
+  paw: ['Patte animal', `${c(8, 6.5, 1.8)}${c(16, 6.5, 1.8)}${c(4.8, 11.5, 1.8)}${c(19.2, 11.5, 1.8)}M12 11c-3 0-5 4-5 6.5 0 2 2 2.5 5 1.5 3 1 5 .5 5-1.5 0-2.5-2-6.5-5-6.5z`],
+  fish: ['Poisson pêche mer', 'M3 12c3-4 8-6 13-3l5-3v12l-5-3c-5 3-10 1-13-3zM8 11h.01'],
+  hive: ['Ruche hexagone miel', 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM8.5 10h7M8.5 12.5h7M8.5 15h7'],
+  fire: ['Feu de camp', 'M12 3c3 3 5 6 5 9a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-7.5zM5 21l14-2M5 19l14 2'],
+  coffee: ['Café boisson', 'M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3c-1 1.5 1 2.5 0 4M12 3c-1 1.5 1 2.5 0 4'],
   folder: ['Dossier', 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],
   'folder-open': ['Dossier ouvert', 'M5 19h13l3-9H8l-3 9zM5 19V6a1 1 0 0 1 1-1h4l2 2h6a1 1 0 0 1 1 1v2'],
   file: ['Document', 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6'],
@@ -66,7 +108,13 @@ export const ICONS = {
   search: ['Recherche', `${c(11, 11, 7)}M20 20l-3.5-3.5`],
 };
 
-export const isIconRef = s => typeof s === 'string' && s.startsWith('icon:');
+// Nom affiché : la partie avant les mots-clés de recherche (« Arc-en-ciel », « Plante en pot » → « Plante »).
+export const iconLabel = name => {
+  const lbl = ICONS[name]?.[0] || name;
+  return NATURE_ICONS.includes(name) ? lbl.split(' ')[0] : lbl;
+};
+
+export const isIconRef =s => typeof s === 'string' && s.startsWith('icon:');
 
 export function glyph(name, size = 18) {
   const entry = ICONS[name];

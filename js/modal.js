@@ -2,7 +2,7 @@
 import { h, svgIcon } from './util.js';
 import { addMediaFile, isMediaRef, mediaInfo } from './media.js';
 import { iconEl, faviconCandidates } from './icons.js';
-import { ICONS, glyph, isIconRef } from './icon-library.js';
+import { ICONS, NATURE_ICONS, glyph, iconLabel, isIconRef } from './icon-library.js';
 
 export function openModal({ title, body, submitLabel = 'Enregistrer', onSubmit }) {
   const errorBox = h('p', { class: 'form-error', role: 'alert', hidden: true });
@@ -64,7 +64,7 @@ export function imageField(label, value, { accept = 'image/*', help, emoji = fal
     const special = isMediaRef(v) || isIconRef(v);
     if (!fromText) text.value = special ? '' : v;
     fileName.textContent = isMediaRef(v) ? (mediaInfo(v)?.name || 'Fichier')
-      : isIconRef(v) ? `Icône : ${ICONS[v.slice(5)]?.[0] || v.slice(5)}` : '';
+      : isIconRef(v) ? `Icône : ${ICONS[v.slice(5)] ? iconLabel(v.slice(5)) : v.slice(5)}` : '';
     preview.replaceChildren(v ? iconEl(v, '?', 'preview-img') : '');
     clearBtn.hidden = !v;
   }
@@ -81,12 +81,21 @@ export function imageField(label, value, { accept = 'image/*', help, emoji = fal
     const grid = h('div', { class: 'icon-grid', role: 'listbox', 'aria-label': 'Icônes' });
     const fill = () => {
       const q = filter.value.trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
-      grid.replaceChildren(...Object.entries(ICONS)
-        .filter(([name, [lbl]]) => !q || `${name} ${lbl}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q))
-        .map(([name, [lbl]]) => h('button', {
+      const match = name => !q || `${name} ${ICONS[name][0]}`.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').includes(q);
+      // Le libell\u00e9 sert aussi au filtre (mots-cl\u00e9s) ; l'infobulle n'en garde que le premier mot.
+      const btn = name => {
+        const lbl = iconLabel(name);
+        return h('button', {
           type: 'button', class: `icon-choice${current === 'icon:' + name ? ' selected' : ''}`, title: lbl, 'aria-label': lbl,
           onclick: () => { set('icon:' + name); panel.hidden = true; },
-        }, glyph(name, 20))));
+        }, glyph(name, 20));
+      };
+      // Ic\u00f4nes \u00ab Nature \u00bb en premier, puis les autres
+      const nature = NATURE_ICONS.filter(match);
+      const others = Object.keys(ICONS).filter(n => !NATURE_ICONS.includes(n) && match(n));
+      grid.replaceChildren(
+        ...(nature.length ? [h('div', { class: 'icon-grid-title' }, 'Nature'), ...nature.map(btn)] : []),
+        ...(others.length ? [h('div', { class: 'icon-grid-title' }, 'Autres'), ...others.map(btn)] : []));
     };
     filter.addEventListener('input', fill);
     filter.addEventListener('keydown', e => { if (e.key === 'Enter') e.preventDefault(); });

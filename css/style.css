@@ -912,3 +912,40 @@ body.palette-nature .category:not(.closed):not(.tinted):not(.bare) { --edge-c: c
 .dock-avatar.big { --thick: 7px; }
 .dock-item:hover .dock-avatar, .dock-item:focus-visible .dock-avatar { transform: translateY(-2px) scale(1.08); }
 .dock-item:active .dock-avatar { transform: translateY(4px); --thick: 1px; }
+
+/* ---- Icônes des pavés : médaillon bombé qui projette une ombre ----
+   Reflet en haut, assombri en bas (dôme), puis ombre courte nette + ombre longue
+   et douce vers le bas à droite, comme si la lumière venait d'en haut à gauche. */
+.card .avatar,
+body:not(.searching) .category.closed .category-head > .category-icon.icon-glyph {
+  background-image: radial-gradient(circle at 32% 26%, rgba(255, 255, 255, 0.38), rgba(255, 255, 255, 0.06) 45%, rgba(0, 0, 0, 0.22) 100%);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.45), inset 0 -3px 5px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(0, 0, 0, 0.18),
+    3px 4px 5px rgba(0, 0, 0, 0.35),
+    10px 14px 18px -4px rgba(0, 0, 0, 0.35) !important;
+  transition: transform .15s ease, box-shadow .15s ease;
+}
+/* L'icône elle-même est un peu en relief sur le médaillon */
+.card .avatar .avatar-icon, .card .avatar .icon-glyph svg, .card .avatar .icon-fallback,
+.card .avatar .icon-emoji {
+  filter: drop-shadow(1px 2px 1.5px rgba(0, 0, 0, 0.4));
+}
+/* Au survol du pavé, le médaillon monte un peu et son ombre s'allonge */
+.card:hover .avatar, .category.closed:hover .category-head > .category-icon.icon-glyph {
+  transform: translateY(-2px);
+  box-shadow:
+    inset 0 2px 1px rgba(255, 255, 255, 0.45), inset 0 -3px 5px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(0, 0, 0, 0.18),
+    4px 6px 7px rgba(0, 0, 0, 0.35),
+    14px 20px 22px -4px rgba(0, 0, 0, 0.38) !important;
+}
+/* Icône-image d'une catégorie (logo, favicône) : l'ombre suit la forme du dessin */
+body:not(.searching) .category.closed .category-head > .category-icon:not(.icon-glyph) {
+  filter: drop-shadow(2px 3px 2px rgba(0, 0, 0, 0.4)) drop-shadow(8px 12px 10px rgba(0, 0, 0, 0.3));
+  transition: transform .15s ease;
+}
+.category.closed:hover .category-head > .category-icon:not(.icon-glyph) { transform: translateY(-2px); }
+
+/* Choix d'icône : titres de section (Nature, Autres) sur toute la largeur */
+.icon-grid-title { grid-column: 1 / -1; margin: 4px 0 -2px; font-size: .74rem; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
