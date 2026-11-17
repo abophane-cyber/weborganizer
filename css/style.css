@@ -152,12 +152,12 @@ body.editing .movable:hover { outline-color: var(--accent); }
 .banner span { flex: 1 1 240px; }
 
 /* ---- Tableau ---- */
-/* Tableau en colonnes, aligné à gauche : chaque colonne empile ses catégories. */
+/* Tableau en colonnes, centré sous la barre de recherche : chaque colonne empile ses catégories. */
 .board {
   flex: 1; display: flex; flex-direction: column; align-items: flex-start; gap: 18px;
   padding: 16px clamp(16px, 4vw, 48px) 32px;
 }
-.board-cols { display: flex; justify-content: flex-start; align-items: flex-start; gap: 18px; width: 100%; flex-wrap: wrap; }
+.board-cols { display: flex; justify-content: center; align-items: flex-start; gap: 18px; width: 100%; flex-wrap: wrap; }
 .board-col { display: flex; flex-direction: column; gap: 18px; width: min(100%, 380px); min-height: 40px; border-radius: var(--radius); }
 .add-category { width: min(100%, 380px); }
 /* Zone de fin de colonne : visible seulement pendant qu'on fait glisser une catégorie. */
@@ -189,7 +189,7 @@ body.editing .dock-order:empty { display: none; }
   border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff;
 }
 .dock-mini:hover { border-color: var(--accent); background: rgba(110, 168, 254, 0.18); }
-body.has-dock .top, body.has-dock .board, body.has-dock .page-footer { padding-left: 92px; }
+body.has-dock .top, body.has-dock .board, body.has-dock .page-footer { padding-left: 92px; padding-right: 92px; }
 .dock-item { position: relative; display: block; text-decoration: none; color: #fff; border-radius: 50%; }
 .dock-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .dock-avatar {

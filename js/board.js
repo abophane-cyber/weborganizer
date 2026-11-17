@@ -390,7 +390,31 @@ function fitCanvas(canvas) {
   const screenRest = window.innerHeight - top - 60;
   const extra = document.body.classList.contains('editing') ? 320 : 24;
   canvas.style.height = `${Math.max(bottom + extra, screenRest, 200)}px`;
+  centerGroup(canvas);
 }
+
+// Hors édition, l'ensemble des pavés est recentré sous la barre de recherche
+// (les positions enregistrées ne changent pas ; en édition, on voit le plan tel quel).
+function centerGroup(area) {
+  if (!area) return;
+  area.style.translate = '';
+  if (document.body.classList.contains('editing')) return;
+  let minL = Infinity, maxR = -Infinity;
+  area.querySelectorAll('.category').forEach(s => {
+    const r = s.getBoundingClientRect();
+    if (!r.width) return;
+    minL = Math.min(minL, r.left);
+    maxR = Math.max(maxR, r.right);
+  });
+  if (minL === Infinity) return;
+  const a = area.getBoundingClientRect();
+  const ref = document.querySelector('.top-text')?.getBoundingClientRect();
+  const target = ref && ref.width ? ref.left + ref.width / 2 : a.left + a.width / 2;
+  // Sans sortir de la zone du tableau.
+  const shift = Math.min(a.right - maxR, Math.max(a.left - minL, target - (minL + maxR) / 2));
+  if (Math.abs(shift) >= 1) area.style.translate = `${Math.round(shift)}px 0`;
+}
+const recenter = () => centerGroup(document.querySelector('.board-cols, .board-canvas'));
 
 // ---- Aimantation sur les autres pavés ----
 // Pendant le glisser, le pavé s'accroche (à moins de SNAP px) aux bords et au centre
@@ -514,13 +538,17 @@ function renderFree(root, cfg) {
   // Les images (favicônes, photos) peuvent changer la hauteur après coup.
   const ro = new ResizeObserver(() => fitCanvas(canvas));
   canvas.querySelectorAll('.category').forEach(s => ro.observe(s));
-  if (!resizeHooked) {
-    resizeHooked = true;
-    const refit = () => { const c = document.querySelector('.board-canvas'); if (c) fitCanvas(c); };
-    addEventListener('resize', refit);
-    // Ouverture / fermeture des Paramètres : marge du bas en mode édition.
-    new MutationObserver(refit).observe(document.body, { attributes: true, attributeFilter: ['class'] });
-  }
+  hookRefit();
+}
+
+// Redimensionnement de la fenêtre, ouverture / fermeture des Paramètres (marge du bas
+// en mode édition), recherche : on recale le plan et on recentre les pavés.
+function hookRefit() {
+  if (resizeHooked) return;
+  resizeHooked = true;
+  const refit = () => { const c = document.querySelector('.board-canvas'); if (c) fitCanvas(c); else recenter(); };
+  addEventListener('resize', refit);
+  new MutationObserver(refit).observe(document.body, { attributes: true, attributeFilter: ['class'] });
 }
 
 // ---- Barre latérale : catégories affichées « en ronds sur le côté gauche » ----
@@ -730,11 +758,16 @@ export function renderBoard(root) {
     enableColumnDrop(el, col);
     return el;
   });
+  const cols = h('div', { class: 'board-cols' }, columns);
   root.replaceChildren(
-    h('div', { class: 'board-cols' }, columns),
+    cols,
     h('p', { class: 'search-empty', hidden: true }, 'Aucune carte ne correspond à la recherche.'),
   );
   applySearch(root);
+  requestAnimationFrame(recenter);
+  const ro = new ResizeObserver(recenter);
+  cols.querySelectorAll('.category').forEach(sec => ro.observe(sec));
+  hookRefit();
 }
 
 // ---- Recherche ----
