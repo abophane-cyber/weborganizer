@@ -1033,15 +1033,10 @@ body .cat-view .cards > .card.group-tile {
   backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
   border: 1px solid color-mix(in srgb, var(--gt-c) 45%, rgba(255, 255, 255, 0.55));
   color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
-  /* Tranche épaisse et bien visible, comme une catégorie : seule la face est en verre */
-  --thick: 11px;
-  --edge-c: color-mix(in srgb, var(--gt-c) 62%, #000);
   --bevel: inset 0 0 0 4px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.45),
            inset 0 0 22px color-mix(in srgb, var(--gt-c) 30%, transparent);
 }
 body .cat-view .cards > .card.group-tile.colored { --gt-c: var(--card-bg); }
-/* Clic : elle s'enfonce dans sa tranche, comme une carte */
-body .cat-view .cards > .card.group-tile:active { --thick: 3px; }
 body .cat-view .cards > .card.group-tile:hover {
   background:
     linear-gradient(150deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 100%),
@@ -1073,22 +1068,30 @@ body.editing .cat-view .cards > .card[data-key] { cursor: grab; touch-action: no
 body.group-dragging, body.group-dragging * { cursor: grabbing !important; }
 body .cat-view .cards > .card.tile-dragging:nth-child(n) {
   transform: var(--drag-t, none) !important; transition: none; z-index: 5;
-  --lift: 10px 22px 34px rgba(0, 0, 0, 0.55); --thick: 11px;
+  --lift: 10px 22px 34px rgba(0, 0, 0, 0.55); --thick: 6px;
 }
 /* Nom de la sous-catégorie toujours en blanc sur le verre, même sur les teintes
    claires de la charte « Nature » (qui passent le texte des cartes en brun foncé). */
 body .cat-view .cards > .card.group-tile.tile:nth-child(n) {
   color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
-/* Sous-catégories : tranche en biais, visible en bas ET sur le côté droit, comme un
-   bloc extrudé (ombres empilées en diagonale, 8 pas jusqu'à --thick). */
+/* Sous-catégories : tranche en biais, en bas et à droite, douce comme un coussin.
+   Couches empilées en diagonale, légèrement floues, du ton de la tuile vers un peu
+   plus sombre ; face bombée (lumière en haut à gauche, ombre en bas à droite) et
+   liseré discret. */
 body .cat-view .cards > .card.group-tile {
-  --t: calc(var(--thick) / 8);
+  --thick: 6px;
+  --t: calc(var(--thick) / 4);
+  --e1: color-mix(in srgb, var(--gt-c) 80%, #000);
+  --e2: color-mix(in srgb, var(--gt-c) 68%, #000);
+  border-color: color-mix(in srgb, var(--gt-c) 60%, rgba(255, 255, 255, 0.25));
+  --bevel: inset 2px 3px 6px rgba(255, 255, 255, 0.16), inset -3px -4px 10px rgba(0, 0, 0, 0.22),
+           inset 0 0 22px color-mix(in srgb, var(--gt-c) 30%, transparent);
   box-shadow: var(--bevel),
-    calc(var(--t) * 1) calc(var(--t) * 1) 0 var(--edge-c), calc(var(--t) * 2) calc(var(--t) * 2) 0 var(--edge-c),
-    calc(var(--t) * 3) calc(var(--t) * 3) 0 var(--edge-c), calc(var(--t) * 4) calc(var(--t) * 4) 0 var(--edge-c),
-    calc(var(--t) * 5) calc(var(--t) * 5) 0 var(--edge-c), calc(var(--t) * 6) calc(var(--t) * 6) 0 var(--edge-c),
-    calc(var(--t) * 7) calc(var(--t) * 7) 0 var(--edge-c), var(--thick) var(--thick) 0 var(--edge-c),
-    calc(var(--thick) + 1px) calc(var(--thick) + 1px) 0 rgba(0, 0, 0, 0.45), var(--lift) !important;
+    var(--t) var(--t) 1px var(--e1),
+    calc(var(--t) * 2) calc(var(--t) * 2) 1.5px var(--e1),
+    calc(var(--t) * 3) calc(var(--t) * 3) 2px var(--e2),
+    var(--thick) var(--thick) 3px var(--e2),
+    calc(var(--thick) + 4px) calc(var(--thick) + 6px) 16px rgba(0, 0, 0, 0.35) !important;
 }
-body .cat-view .cards > .card.group-tile:active:not(.tile-dragging) { transform: translate(8px, 8px) !important; }
+body .cat-view .cards > .card.group-tile:active:not(.tile-dragging) { transform: translate(4px, 4px) !important; --thick: 2px; }
