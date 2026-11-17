@@ -83,27 +83,63 @@ function cardsGrid(ctx) {
   );
 }
 
-// Bouton de repli : flèche + titre cliquables, avec le nombre de cartes quand c'est replié.
-function collapseToggle(tag, label, collapsed, count, onToggle) {
+// ---- Ouverture d'une catégorie / sous-catégorie sur un écran à part ----
+// L'écran ouvert est dans l'adresse (#c/<catégorie> ou #c/<catégorie>/<sous-catégorie>) :
+// le bouton « Retour » comme le retour du navigateur ramènent au niveau précédent.
+const boardRoot = () => document.getElementById('board');
+const enc = encodeURIComponent;
+const pageUrl = () => location.pathname + location.search;
+
+function currentView(cfg) {
+  const m = /^#c\/([^/]+)(?:\/([^/]+))?$/.exec(location.hash);
+  if (!m) return null;
+  const cat = cfg.categories.find(c => c.id === decodeURIComponent(m[1]));
+  if (!cat || cat.bare) return null;
+  const group = m[2] ? cat.groups.find(g => g.id === decodeURIComponent(m[2])) || null : null;
+  return { cat, group };
+}
+
+function clearSearch() {
+  const input = document.getElementById('search');
+  if (input) input.value = '';
+  query = '';
+}
+
+export function openView(catId, groupId = '') {
+  clearSearch();
+  history.pushState({ wo: true }, '', `#c/${enc(catId)}${groupId ? `/${enc(groupId)}` : ''}`);
+  renderBoard(boardRoot());
+  scrollTo(0, 0);
+}
+
+function goBack(view) {
+  // Écran ouvert depuis la page : on revient simplement en arrière dans l'historique.
+  if (history.state?.wo) { history.back(); return; }
+  history.replaceState(null, '', view.group ? `#c/${enc(view.cat.id)}` : pageUrl());
+  renderBoard(boardRoot());
+}
+
+addEventListener('popstate', () => { renderBoard(boardRoot()); scrollTo(0, 0); });
+
+// Titre cliquable d'une catégorie (ou sous-catégorie) sur la page : ouvre son écran.
+function openButton(tag, label, count, onOpen) {
   return h('button', {
-    type: 'button', class: 'collapse-toggle', 'aria-expanded': String(!collapsed),
-    title: collapsed ? `Déplier « ${label} »` : `Replier « ${label} »`,
-    onclick: e => { e.preventDefault(); onToggle(); },
+    type: 'button', class: 'collapse-toggle open-toggle', title: `Ouvrir « ${label} »`,
+    onclick: e => { e.preventDefault(); e.stopPropagation(); onOpen(); },
   },
-    h('span', { class: 'chevron', 'aria-hidden': 'true' }, svgIcon('down', 16)),
     h(tag, {}, label),
-    collapsed && count > 0 && h('span', { class: 'collapsed-count' }, String(count)),
+    count > 0 && h('span', { class: 'collapsed-count' }, String(count)),
   );
 }
 
 function groupEl(cat, group, gi) {
   return h('div', {
-    class: `group${group.collapsed ? ' collapsed' : ''}${group.color ? ' tinted' : ''}`,
+    class: `group${group.color ? ' tinted' : ''}`,
     style: group.color ? { '--group-color': group.color } : null,
   },
     h('div', { class: 'group-head' },
       h('span', { class: 'group-icon', 'aria-hidden': 'true' }, glyph('folder', 15)),
-      collapseToggle('h3', group.name, group.collapsed, group.cards.length, () => actions.toggleGroup(cat.id, group.id)),
+      openButton('h3', group.name, group.cards.length, () => openView(cat.id, group.id)),
       h('div', { class: 'edit-controls' },
         gi > 0 && editButton('up', 'Monter la sous-catégorie', () => actions.moveGroup(cat.id, group.id, -1)),
         gi < cat.groups.length - 1 && editButton('down', 'Descendre la sous-catégorie', () => actions.moveGroup(cat.id, group.id, 1)),
@@ -144,12 +180,18 @@ function categoryEl(cat, pos) {
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
   const cardCount = cat.cards.length + cat.groups.reduce((n, g) => n + g.cards.length, 0);
   return h('section', {
-    class: `category${cat.collapsed ? ' collapsed' : ''}${cat.color ? ' tinted' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id },
+    class: `category closed${cat.color ? ' tinted' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id },
     style: cat.color ? { '--cat-color': cat.color } : null,
+    // Un clic n'importe où sur le cadre ouvre la catégorie (sauf boutons et cartes,
+    // visibles seulement pendant une recherche ou en édition).
+    onclick: e => {
+      if (e.target.closest('.edit-controls, .card, .group, .add-group')) return;
+      openView(cat.id);
+    },
   },
     h('header', { class: 'category-head' },
       iconEl(cat.icon, cat.name, 'category-icon'),
-      collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),
+      openButton('h2', cat.name, cardCount, () => openView(cat.id)),
       h('div', { class: 'edit-controls' },
         h('span', { class: 'drag-handle', title: pos.free ? 'Glisser pour placer la catégorie où vous voulez' : 'Glisser pour déplacer la catégorie (dessus, dessous, autre colonne)', 'aria-hidden': 'true' }, svgIcon('grip', 16)),
         !pos.free && pos.col > 0 && editButton('left', 'Colonne de gauche', () => actions.moveCategoryColumn(cat.id, -1)),
@@ -164,6 +206,71 @@ function categoryEl(cat, pos) {
     cat.groups.map((g, gi) => groupEl(cat, g, gi)),
     h('button', { type: 'button', class: 'add-group edit-only', onclick: () => actions.addGroup(cat.id) },
       svgIcon('plus', 14), 'Ajouter une sous-catégorie'),
+  );
+}
+
+// ---- Écran d'une catégorie ou d'une sous-catégorie ----
+// Bouton « Retour », titre au centre, puis les cartes ; pour une catégorie, ses
+// sous-catégories en tuiles qui ouvrent leur propre écran.
+function groupTile(cat, group, gi) {
+  const n = group.cards.length;
+  return h('a', {
+    class: `card tile group-tile${group.color ? ' colored' : ''}`, href: `#c/${enc(cat.id)}/${enc(group.id)}`,
+    style: group.color ? { '--card-bg': group.color } : null, title: `Ouvrir « ${group.name} »`,
+    onclick: e => { e.preventDefault(); openView(cat.id, group.id); },
+  },
+    h('span', { class: 'avatar' }, glyph('folder', 24)),
+    h('span', { class: 'card-text' }, h('span', { class: 'card-name' }, group.name)),
+    h('span', { class: 'badge' }, `${n} carte${n > 1 ? 's' : ''}`),
+    h('div', { class: 'edit-controls card-controls' },
+      gi > 0 && editButton('left', 'Déplacer avant', () => actions.moveGroup(cat.id, group.id, -1)),
+      gi < cat.groups.length - 1 && editButton('right', 'Déplacer après', () => actions.moveGroup(cat.id, group.id, 1)),
+      editButton('edit', 'Modifier la sous-catégorie', () => actions.editGroup(cat.id, group.id)),
+      editButton('trash', 'Supprimer la sous-catégorie', () => actions.deleteGroup(cat.id, group.id), 'danger'),
+    ),
+  );
+}
+
+function viewEl(view) {
+  const { cat, group } = view;
+  const color = group ? group.color : cat.color;
+  const head = h('header', { class: 'view-head' },
+    h('button', { type: 'button', class: 'view-back', onclick: () => goBack(view) }, svgIcon('left', 16), 'Retour'),
+    h('h2', { class: 'view-title' },
+      group ? h('span', { class: 'view-icon', 'aria-hidden': 'true' }, glyph('folder', 20)) : iconEl(cat.icon, cat.name, 'category-icon'),
+      h('span', {}, group ? group.name : cat.name),
+    ),
+    h('div', { class: 'edit-controls view-controls' },
+      group
+        ? editButton('edit', 'Modifier la sous-catégorie', () => actions.editGroup(cat.id, group.id))
+        : editButton('edit', 'Modifier la catégorie', () => actions.editCategory(cat.id)),
+      group
+        ? editButton('trash', 'Supprimer la sous-catégorie', () => actions.deleteGroup(cat.id, group.id), 'danger')
+        : editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
+    ),
+  );
+  let body;
+  if (group) {
+    body = cardsGrid({ cat, groupId: group.id, list: group.cards });
+  } else {
+    const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
+    // Pas de cartes directes mais des sous-catégories : la grille vide n'apparaît qu'en édition.
+    if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
+    body = [
+      direct,
+      cat.groups.length > 0 && h('div', { class: 'cards view-groups' }, cat.groups.map((g, gi) => groupTile(cat, g, gi))),
+      h('button', { type: 'button', class: 'add-group edit-only', onclick: () => actions.addGroup(cat.id) },
+        svgIcon('plus', 14), 'Ajouter une sous-catégorie'),
+    ];
+  }
+  const empty = group ? !group.cards.length : !cat.cards.length && !cat.groups.length;
+  return h('section', {
+    class: 'cat-view', 'aria-label': group ? group.name : cat.name,
+    style: color ? { '--cat-color': color } : null,
+  },
+    head,
+    body,
+    empty && h('p', { class: 'view-empty' }, 'Aucune carte pour l’instant. Ouvrez les Paramètres pour en ajouter.'),
   );
 }
 
@@ -425,6 +532,15 @@ function renderDock(cfg) {
 export function renderBoard(root) {
   const cfg = store.get();
   renderDock(cfg);
+  const view = currentView(cfg);
+  document.body.classList.toggle('viewing', !!view);
+  if (view) {
+    root.classList.remove('board-free');
+    root.replaceChildren(viewEl(view), h('p', { class: 'search-empty', hidden: true }));
+    return;
+  }
+  // Adresse d'un écran qui n'existe plus (catégorie supprimée…) : retour à la page.
+  if (location.hash.startsWith('#c/')) history.replaceState(null, '', pageUrl());
   root.classList.toggle('board-free', cfg.theme.layout === 'free');
   if (cfg.theme.layout === 'free') {
     renderFree(root, cfg);
