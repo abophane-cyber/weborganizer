@@ -9,6 +9,7 @@ import { h, toast } from './util.js';
 import { imageEl } from './icons.js';
 import { initSearch } from './board.js';
 import { initWeather } from './weather.js';
+import { initClock } from './clock.js';
 
 let renderedLogo = null;
 function renderLogo(src) {
@@ -140,6 +141,7 @@ async function start() {
   initMovable();
   initSettings();
   initWeather();
+  initClock();
   initFullscreen();
   await sync.init();
   welcomeBanner();
