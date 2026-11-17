@@ -470,7 +470,7 @@ function dockItem(card, cat, groupId) {
   if (inProfile) sub += ` · profil ${inProfile}`;
   const circle = big => h('span', { class: `dock-avatar${big ? ' big' : ''}`, style: color ? { '--card-bg': color } : null },
     iconEl(src, name, isMediaRef(src) ? 'avatar-img' : 'avatar-icon'));
-  return h('div', { class: 'dock-slot' },
+  return h('div', { class: 'dock-slot', dataset: { cat: cat.id, group: groupId || '', card: card.id } },
     h('a', {
       class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : (inProfile ? profileUrl(inProfile, url) : (url || null)),
       target: !isChrome && url && !inProfile ? '_blank' : null, rel: 'noopener noreferrer', 'aria-label': name,
@@ -498,6 +498,103 @@ function dockItem(card, cat, groupId) {
   );
 }
 
+// ---- Glisser-déposer dans la barre des ronds ----
+// Un rond : on le pose sur un autre rond (moitié haute = avant, basse = après), même
+// dans une autre barre, ou sur le fond d'une barre (= à la fin de la catégorie).
+// Une barre : on l'attrape par son fond et on la pose au-dessus / en dessous d'une autre.
+// Un simple clic reste un clic : le déplacement ne démarre qu'après quelques pixels.
+let dockHooked = false;
+function enableDockDrag(dock) {
+  if (dockHooked) return;
+  dockHooked = true;
+  let st = null;
+  const clearMarks = () => dock.querySelectorAll('.drop-before, .drop-after, .drop-into')
+    .forEach(el => el.classList.remove('drop-before', 'drop-after', 'drop-into'));
+
+  dock.addEventListener('pointerdown', e => {
+    if (e.button !== 0 || e.target.closest('button')) return;
+    const slot = e.target.closest('.dock-slot');
+    const group = e.target.closest('.dock-group');
+    const el = slot || group;
+    if (!el) return;
+    st = { el, kind: slot ? 'card' : 'bar', x: e.clientX, y: e.clientY, id: e.pointerId, moving: false };
+  });
+
+  addEventListener('pointermove', e => {
+    if (!st || e.pointerId !== st.id) return;
+    if (!st.moving) {
+      if (Math.hypot(e.clientX - st.x, e.clientY - st.y) < 6) return;
+      st.moving = true;
+      const r = st.el.getBoundingClientRect();
+      st.dx = st.x - r.left; st.dy = st.y - r.top;
+      st.ghost = st.el.cloneNode(true);
+      st.ghost.classList.add('dock-ghost');
+      st.ghost.querySelectorAll('.dock-card').forEach(x => x.remove());
+      st.ghost.style.width = `${r.width}px`;
+      document.body.append(st.ghost);
+      st.el.classList.add('dock-dragging');
+      document.body.classList.add('dock-moving');
+    }
+    st.ghost.style.left = `${e.clientX - st.dx}px`;
+    st.ghost.style.top = `${e.clientY - st.dy}px`;
+    clearMarks();
+    st.target = null;
+    const under = document.elementFromPoint(e.clientX, e.clientY);
+    if (!under || !dock.contains(under)) return;
+    if (st.kind === 'card') {
+      const slot = under.closest('.dock-slot');
+      if (slot && slot !== st.el) {
+        const r = slot.getBoundingClientRect();
+        const after = e.clientY > r.top + r.height / 2;
+        slot.classList.add(after ? 'drop-after' : 'drop-before');
+        st.target = { slot, after };
+      } else if (!slot) {
+        const group = under.closest('.dock-group');
+        if (group) { group.classList.add('drop-into'); st.target = { group }; }
+      }
+    } else {
+      const group = under.closest('.dock-group');
+      if (group && group !== st.el) {
+        const r = group.getBoundingClientRect();
+        const after = e.clientY > r.top + r.height / 2;
+        group.classList.add(after ? 'drop-after' : 'drop-before');
+        st.target = { group, after };
+      }
+    }
+  });
+
+  const end = e => {
+    if (!st || e.pointerId !== st.id) return;
+    const s = st;
+    st = null;
+    if (!s.moving) return;
+    s.ghost.remove();
+    s.el.classList.remove('dock-dragging');
+    document.body.classList.remove('dock-moving');
+    clearMarks();
+    // Le clic qui suit le relâchement ne doit pas ouvrir la carte.
+    const eat = ev => { ev.preventDefault(); ev.stopPropagation(); };
+    addEventListener('click', eat, { capture: true, once: true });
+    setTimeout(() => removeEventListener('click', eat, { capture: true }), 0);
+    const t = s.target;
+    if (!t || e.type === 'pointercancel') return;
+    if (s.kind === 'card') {
+      const from = { cat: s.el.dataset.cat, group: s.el.dataset.group };
+      if (t.slot) {
+        actions.placeCard(from, s.el.dataset.card, { cat: t.slot.dataset.cat, group: t.slot.dataset.group }, t.slot.dataset.card, t.after);
+      } else {
+        actions.placeCard(from, s.el.dataset.card, { cat: t.group.dataset.cat, group: '' }, null, false);
+      }
+    } else {
+      actions.placeDocked(s.el.dataset.cat, t.group.dataset.cat, t.after);
+    }
+  };
+  addEventListener('pointerup', end);
+  addEventListener('pointercancel', end);
+  // Pas de glisser natif du navigateur (lien / image) qui gênerait le déplacement.
+  dock.addEventListener('dragstart', e => e.preventDefault());
+}
+
 function renderDock(cfg) {
   const dock = document.getElementById('dock');
   if (!dock) return;
@@ -505,7 +602,8 @@ function renderDock(cfg) {
   dock.hidden = cats.length === 0;
   document.body.classList.toggle('has-dock', cats.length > 0);
   // Une barre arrondie par catégorie, séparées par un espace ; ▲ ▼ changent leur ordre.
-  dock.replaceChildren(...cats.map((cat, i) => h('div', { class: 'dock-group', 'aria-label': cat.name, role: 'group' },
+  enableDockDrag(dock);
+  dock.replaceChildren(...cats.map((cat, i) => h('div', { class: 'dock-group', 'aria-label': cat.name, role: 'group', dataset: { cat: cat.id } },
     h('div', { class: 'dock-order' },
       i > 0 && h('button', {
         type: 'button', class: 'dock-mini', title: `Monter « ${cat.name} »`, 'aria-label': `Monter « ${cat.name} »`,

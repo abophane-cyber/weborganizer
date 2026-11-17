@@ -444,6 +444,34 @@ export function deleteCard(catId, groupId, cardId) {
   });
 }
 
+// Glisser-déposer (barre des ronds) : place la carte avant / après une autre carte,
+// éventuellement dans une autre catégorie ; sans carte cible, à la fin de `to`.
+// from / to : { cat, group }
+export function placeCard(from, cardId, to, targetId, after) {
+  store.update(c => {
+    const src = findHolder(from.cat, from.group);
+    const dst = findHolder(to.cat, to.group);
+    const i = src?.cards.findIndex(x => x.id === cardId) ?? -1;
+    if (i < 0 || !dst) return;
+    const [card] = src.cards.splice(i, 1);
+    let j = targetId ? dst.cards.findIndex(x => x.id === targetId) : -1;
+    j = j < 0 ? dst.cards.length : j + (after ? 1 : 0);
+    dst.cards.splice(j, 0, card);
+    dropEmptyBare(c);
+  });
+}
+
+// Glisser-déposer d'une barre entière : avant / après une autre barre.
+export function placeDocked(id, targetId, after) {
+  store.update(c => {
+    const i = c.categories.findIndex(x => x.id === id);
+    if (i < 0 || id === targetId) return;
+    const [cat] = c.categories.splice(i, 1);
+    const j = c.categories.findIndex(x => x.id === targetId);
+    c.categories.splice(j < 0 ? c.categories.length : j + (after ? 1 : 0), 0, cat);
+  });
+}
+
 export function moveCard(catId, groupId, cardId, dir) {
   store.update(() => { const holder = findHolder(catId, groupId); move(holder.cards, holder.cards.findIndex(x => x.id === cardId), dir); });
 }
