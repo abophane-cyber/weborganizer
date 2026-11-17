@@ -88,6 +88,37 @@ export function moveGroup(catId, groupId, dir) {
 
 // ---- Cartes ----
 
+// Couleur : palette + code hexadécimal saisi au clavier, synchronisés.
+const HEX_RE = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
+function normalizeHex(v) {
+  const m = v.trim().match(HEX_RE);
+  if (!m) return null;
+  let hex = m[1];
+  if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
+  return '#' + hex.toUpperCase();
+}
+function colorInput(initial) {
+  const start = normalizeHex(initial) || DEFAULT_PROFILE_COLOR;
+  const picker = h('input', { type: 'color', value: start.toLowerCase(), 'aria-label': 'Palette de couleurs' });
+  const text = h('input', {
+    type: 'text', value: start, maxlength: '7', spellcheck: 'false', class: 'hex-input',
+    'aria-label': 'Code couleur hexadécimal', placeholder: '#6B3A4A',
+  });
+  picker.addEventListener('input', () => { text.value = picker.value.toUpperCase(); text.classList.remove('invalid'); });
+  text.addEventListener('input', () => {
+    const hex = normalizeHex(text.value);
+    text.classList.toggle('invalid', !hex);
+    if (hex) picker.value = hex.toLowerCase();
+  });
+  text.addEventListener('blur', () => { const hex = normalizeHex(text.value); if (hex) text.value = hex; });
+  return {
+    el: h('div', { class: 'color-field' }, picker, text),
+    get value() { return normalizeHex(text.value) || picker.value.toUpperCase(); },
+    get valid() { return !!normalizeHex(text.value); },
+    set value(v) { const hex = normalizeHex(v); if (hex) { picker.value = hex.toLowerCase(); text.value = hex; text.classList.remove('invalid'); } },
+  };
+}
+
 // Liste de tous les emplacements possibles : "catId|" ou "catId|groupId".
 function locationSelect(current) {
   const sel = h('select', {});
@@ -111,7 +142,7 @@ function cardForm(card, location, onSave) {
   const profileDir = h('input', {
     type: 'text', value: card.profileDir || '', placeholder: 'Default, Profile 1…', maxlength: '64',
   });
-  const color = h('input', { type: 'color', value: card.color || PROFILE_COLORS[card.title] || DEFAULT_PROFILE_COLOR });
+  const color = colorInput(card.color || PROFILE_COLORS[card.title] || DEFAULT_PROFILE_COLOR);
   const badge = h('input', { type: 'text', value: card.badge || '', maxlength: '20', placeholder: 'ex. Tester' });
   const icon = imageField('Icône', card.icon, { help: 'Vide : icône du site (favicon).' });
   const photo = imageField('Photo (dans le cercle)', card.photo, { help: 'Vide : initiale du nom.' });
@@ -120,7 +151,7 @@ function cardForm(card, location, onSave) {
   const chromeFields = h('div', { class: 'field-group' },
     field('Dossier du profil', profileDir,
       'Dans Chrome, ouvrez chrome://version : à la ligne « Chemin d’accès au profil », reprenez le dernier dossier (Default, Profile 1…).'),
-    field('Couleur de fond', color),
+    field('Couleur de fond', color.el, 'Choisissez dans la palette ou tapez un code, ex. #6B3A4A.'),
     photo.el,
   );
   const sync = () => {
@@ -146,6 +177,7 @@ function cardForm(card, location, onSave) {
         const dir = profileDir.value.trim();
         if (!t) return 'Le nom est obligatoire.';
         if (!PROFILE_DIR_RE.test(dir)) return 'Dossier du profil : lettres, chiffres et espaces uniquement (ex. Profile 1).';
+        if (!color.valid) return 'Code couleur invalide : utilisez le format #RRGGBB (ex. #6B3A4A).';
         onSave({ type: 'chrome', title: t, profileDir: dir, color: color.value, photo: photo.value, badge: badge.value.trim() }, catId, groupId);
       } else {
         let u = url.value.trim();

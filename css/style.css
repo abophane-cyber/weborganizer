@@ -236,6 +236,10 @@ input[type=text], input[type=url], select {
 .row select { width: auto; }
 input:focus-visible, select:focus-visible, button:focus-visible, .dropzone:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 input[type=color] { width: 54px; height: 34px; padding: 2px; border-radius: 8px; border: 1px solid var(--border); background: var(--surface); cursor: pointer; }
+.color-field { display: flex; gap: 8px; align-items: center; }
+.color-field input[type=color] { flex: none; }
+.hex-input { width: 120px !important; font-family: ui-monospace, Consolas, monospace; text-transform: uppercase; }
+.hex-input.invalid { border-color: var(--danger); }
 input[type=range] { width: 100%; accent-color: var(--accent); }
 
 .dropzone {
