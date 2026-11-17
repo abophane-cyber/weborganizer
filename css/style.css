@@ -1075,3 +1075,8 @@ body .cat-view .cards > .card.tile-dragging:nth-child(n) {
   transform: var(--drag-t, none) !important; transition: none; z-index: 5;
   --lift: 10px 22px 34px rgba(0, 0, 0, 0.55); --thick: 9px;
 }
+/* Nom de la sous-catégorie toujours en blanc sur le verre, même sur les teintes
+   claires de la charte « Nature » (qui passent le texte des cartes en brun foncé). */
+body .cat-view .cards > .card.group-tile.tile:nth-child(n) {
+  color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
