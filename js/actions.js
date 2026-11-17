@@ -243,6 +243,15 @@ function normalizeHex(v) {
   if (hex.length === 3) hex = hex.split('').map(c => c + c).join('');
   return '#' + hex.toUpperCase();
 }
+// Couleurs proposées sous chaque champ couleur, en lien avec la charte « Nature »
+// (verts de forêt, terres, bois, eau, fleurs) — toutes lisibles avec un texte blanc
+// sauf les plus claires (sable, blé), prévues pour des pavés à texte foncé.
+const NATURE_COLORS = [
+  ['#1E3B2F', 'Forêt'], ['#33664F', 'Pin'], ['#4F7A4A', 'Fougère'], ['#7FB560', 'Mousse'], ['#8FA87A', 'Sauge'],
+  ['#6B7A3A', 'Olive'], ['#2F5A61', 'Lac'], ['#4F7F8F', 'Rivière'], ['#6F98A8', 'Ciel'],
+  ['#5A4636', 'Écorce'], ['#7D4D30', 'Chocolat'], ['#B5603D', 'Terre cuite'], ['#C4864E', 'Caramel'],
+  ['#C9A13B', 'Ocre'], ['#EBC89C', 'Sable'], ['#7A5A7E', 'Bruyère'], ['#A65A5A', 'Baie'],
+];
 function colorInput(initial) {
   const start = normalizeHex(initial) || DEFAULT_PROFILE_COLOR;
   const picker = h('input', { type: 'color', value: start.toLowerCase(), 'aria-label': 'Palette de couleurs' });
@@ -257,8 +266,25 @@ function colorInput(initial) {
     if (hex) picker.value = hex.toLowerCase();
   });
   text.addEventListener('blur', () => { const hex = normalizeHex(text.value); if (hex) text.value = hex; });
+  // Pastilles de couleurs en accord avec la charte « Nature » : un clic choisit la couleur.
+  const swatches = NATURE_COLORS.map(([hex, name]) => h('button', {
+    type: 'button', class: 'swatch', title: `${name} (${hex})`, 'aria-label': name, style: { '--sw': hex },
+    onclick: () => {
+      picker.value = hex.toLowerCase(); text.value = hex; text.classList.remove('invalid');
+      markSwatch();
+    },
+  }));
+  const markSwatch = () => {
+    const cur = normalizeHex(text.value);
+    swatches.forEach((b, i) => b.classList.toggle('selected', NATURE_COLORS[i][0] === cur));
+  };
+  picker.addEventListener('input', markSwatch);
+  text.addEventListener('input', markSwatch);
+  markSwatch();
   return {
-    el: h('div', { class: 'color-field' }, picker, text),
+    el: h('div', { class: 'color-field' },
+      h('div', { class: 'color-inputs' }, picker, text),
+      h('div', { class: 'swatches', role: 'group', 'aria-label': 'Couleurs suggérées' }, ...swatches)),
     get value() { return normalizeHex(text.value) || picker.value.toUpperCase(); },
     get valid() { return !!normalizeHex(text.value); },
     set value(v) { const hex = normalizeHex(v); if (hex) { picker.value = hex.toLowerCase(); text.value = hex; text.classList.remove('invalid'); } },

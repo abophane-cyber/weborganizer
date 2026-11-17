@@ -382,6 +382,50 @@ function fitCanvas(canvas) {
   canvas.style.height = `${Math.max(bottom + extra, screenRest, 200)}px`;
 }
 
+// ---- Aimantation sur les autres pavés ----
+// Pendant le glisser, le pavé s'accroche (à moins de SNAP px) aux bords et au centre
+// des autres pavés, ou se place à l'écart habituel (GAP) à côté / en dessous d'eux.
+// Sinon, il retombe sur la grille de GRID px. Des lignes guides montrent l'alignement.
+const SNAP = 14;
+const GAP = 18; // même écart qu'entre les colonnes de la disposition classique
+
+function snapToOthers(section, canvas, rawL, rawT, maxL) {
+  const w = section.offsetWidth, hgt = section.offsetHeight;
+  const xs = [{ v: 0, g: 0 }, { v: maxL, g: maxL + w }]; // positions candidates + où tracer le guide
+  const ys = [{ v: 0, g: 0 }];
+  canvas.querySelectorAll(':scope > .category').forEach(o => {
+    if (o === section || o.hidden) return;
+    const L = o.offsetLeft, T = o.offsetTop, R = L + o.offsetWidth, B = T + o.offsetHeight;
+    xs.push({ v: L, g: L }, { v: R - w, g: R }, { v: L + (o.offsetWidth - w) / 2, g: L + o.offsetWidth / 2 },
+      { v: R + GAP, g: R + GAP }, { v: L - GAP - w, g: L - GAP }, { v: L - w, g: L }, { v: R, g: R });
+    ys.push({ v: T, g: T }, { v: B - hgt, g: B }, { v: B + GAP, g: B + GAP }, { v: T - GAP - hgt, g: T - GAP });
+  });
+  const best = (raw, list, max) => {
+    let pick = null;
+    for (const c of list) {
+      if (c.v < 0 || c.v > max) continue;
+      const d = Math.abs(c.v - raw);
+      if (d <= SNAP && (!pick || d < pick.d)) pick = { ...c, d };
+    }
+    return pick;
+  };
+  const bx = best(rawL, xs, maxL), by = best(rawT, ys, Infinity);
+  return {
+    left: bx ? Math.round(bx.v) : Math.min(maxL, Math.round(rawL / GRID) * GRID),
+    top: by ? Math.round(by.v) : Math.round(rawT / GRID) * GRID,
+    gx: bx ? bx.g : null, gy: by ? by.g : null,
+  };
+}
+
+function showGuides(canvas, gx, gy) {
+  for (const [cls, v] of [['v', gx], ['h', gy]]) {
+    let g = canvas.querySelector(`:scope > .snap-guide.${cls}`);
+    if (v == null) { g?.remove(); continue; }
+    if (!g) { g = h('div', { class: `snap-guide ${cls}`, 'aria-hidden': 'true' }); canvas.append(g); }
+    g.style.setProperty(cls === 'v' ? 'left' : 'top', `${Math.round(v)}px`);
+  }
+}
+
 function enableFreeDrag(section, cat, canvas) {
   const handle = section.querySelector('.drag-handle');
   let st = null;
@@ -398,10 +442,14 @@ function enableFreeDrag(section, cat, canvas) {
     if (!st) return;
     const c = canvas.getBoundingClientRect();
     const maxL = Math.max(0, canvas.offsetWidth - section.offsetWidth);
-    const left = Math.min(maxL, Math.max(0, Math.round(((e.clientX - c.left) / st.k - st.dx) / GRID) * GRID));
-    const top = Math.max(0, Math.round(((e.clientY - c.top) / st.k - st.dy) / GRID) * GRID);
+    const rawL = Math.min(maxL, Math.max(0, (e.clientX - c.left) / st.k - st.dx));
+    const rawT = Math.max(0, (e.clientY - c.top) / st.k - st.dy);
+    // Alt maintenu : déplacement libre, sans aimantation
+    const snap = e.altKey ? { left: Math.round(rawL), top: Math.round(rawT), gx: null, gy: null } : snapToOthers(section, canvas, rawL, rawT, maxL);
+    const { left, top } = snap;
     section.style.left = `${left}px`;
     section.style.top = `${top}px`;
+    showGuides(canvas, snap.gx, snap.gy);
     st.cur = { x: maxL ? left / maxL : 0, y: top };
     fitCanvas(canvas);
   });
@@ -410,6 +458,7 @@ function enableFreeDrag(section, cat, canvas) {
     const cur = st.cur;
     st = null;
     section.classList.remove('moving');
+    showGuides(canvas, null, null);
     if (cur) actions.setCategoryPosition(cat.id, cur);
   };
   handle.addEventListener('pointerup', end);
