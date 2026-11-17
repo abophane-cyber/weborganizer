@@ -63,12 +63,13 @@
       await kvSet('config', realPage('Ma page locale'));
       await kvSet('syncMeta', { dirty: true, remoteHash: null });
       await mediaPut('mvid', new Blob(['abc'], { type: 'video/mp4' }));
-    } else if (scenario === 'D' || scenario === 'E') {
+    } else if (scenario === 'D' || scenario === 'E' || scenario === 'F') {
       // Comme le vrai pCloud : lien direct bloqué, gettextfile en erreur.
       // Navigateur resté bloqué : page de départ et « remoteHash » déjà à jour (ancien défaut).
       M.blockContent = true;
       M.textfileError = true;
       if (scenario === 'E') M.fileopsFail = true;
+      if (scenario === 'F') M.fileopsAuthError = true;
       const real = realPage('Page de pCloud'); real.media = {}; real.background = { src: '', kind: 'image', overlay: 0.3 };
       M.putFile(rootId, 'config.json', new Blob([JSON.stringify(real)]));
       const remoteId = M.findFile(rootId, 'config.json');
@@ -107,6 +108,11 @@
       check('la page de pCloud est récupérée (nouveau téléchargement forcé)', store.get().title === 'Page de pCloud');
       check('… par file_open / file_pread', M.ways.includes('fileops'));
       check('statut « Enregistré »', sync.getStatus().status === 'saved');
+    } else if (scenario === 'F') {
+      await until(() => sync.getStatus().status === 'error', 5000);
+      check('statut « Erreur » (pas « Reconnexion »)', sync.getStatus().status === 'error');
+      check('toujours connecté à pCloud', window.__wo.cloud.isConnected());
+      check('l\u2019erreur cite la réponse de file_open', /Log in required/.test(sync.getStatus().detail));
     } else if (scenario === 'E') {
       await until(() => sync.getStatus().status === 'error', 5000);
       const st = sync.getStatus();

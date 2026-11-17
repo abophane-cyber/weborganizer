@@ -66,7 +66,9 @@ export function disconnect() { writeAuth(null); }
 
 // ---- Appels API ----
 
-async function call(method, params = {}, init = {}) {
+// soft : erreur sans déconnexion (méthodes de téléchargement : un refus de leur part
+// ne veut pas dire que la session pCloud a expiré).
+async function call(method, params = {}, init = {}, { soft = false } = {}) {
   if (!auth?.token) throw new AuthError('Non connecté');
   const url = new URL(`https://${auth.host}/${method}`);
   url.searchParams.set('access_token', auth.token);
@@ -76,11 +78,11 @@ async function call(method, params = {}, init = {}) {
   const data = await res.json();
   if (data.result !== 0) {
     // 1000 : connexion requise, 2000 : identifiants invalides, 2094 / 2095 : jeton invalide/expiré
-    if ([1000, 2000, 2094, 2095].includes(data.result)) {
+    if (!soft && [1000, 2000, 2094, 2095].includes(data.result)) {
       writeAuth(null);
       throw new AuthError(data.error || 'Session pCloud expirée');
     }
-    const err = new Error(`pCloud ${method} : ${data.error || data.result}`);
+    const err = new Error(`${method} : ${data.error || data.result} (${data.result})`);
     err.code = data.result;
     throw err;
   }
@@ -137,14 +139,11 @@ async function throwIfApiError(res, method) {
   const type = res.headers.get('content-type') || '';
   if (!type.includes('json')) return;
   const j = await res.clone().json().catch(() => null);
-  if (pcloudError(j)) {
-    if ([1000, 2000, 2094, 2095].includes(j.result)) { writeAuth(null); throw new AuthError(j.error); }
-    throw new Error(`${method} : ${j.error} (${j.result})`);
-  }
+  if (pcloudError(j)) throw new Error(`${method} : ${j.error} (${j.result})`);
 }
 
 async function viaLink(fileid) {
-  const link = await call('getfilelink', { fileid, forcedownload: 1 });
+  const link = await call('getfilelink', { fileid, forcedownload: 1 }, {}, { soft: true });
   const res = await fetch(`https://${link.hosts[0]}${link.path}`);
   if (!res.ok) throw new Error(`lien direct : HTTP ${res.status}`);
   return res.blob();
@@ -158,11 +157,11 @@ async function viaTextFile(fileid) {
 }
 
 async function viaFileOps(fileid, size) {
-  const opened = await call('file_open', { fileid, flags: 0 }); // lecture seule
+  const opened = await call('file_open', { fileid, flags: 0 }, {}, { soft: true }); // lecture seule
   const fd = opened.fd;
   try {
     let total = Number(size);
-    if (!Number.isFinite(total)) total = (await call('file_size', { fd })).size;
+    if (!Number.isFinite(total)) total = (await call('file_size', { fd }, {}, { soft: true })).size;
     const parts = [];
     let offset = 0;
     while (offset < total) {
@@ -178,7 +177,7 @@ async function viaFileOps(fileid, size) {
     if (offset < total) throw new Error(`file_pread : fichier incomplet (${offset}/${total} octets)`);
     return new Blob(parts);
   } finally {
-    call('file_close', { fd }).catch(() => {});
+    call('file_close', { fd }, {}, { soft: true }).catch(() => {});
   }
 }
 
@@ -200,7 +199,6 @@ async function downloadBlob(fileid, size) {
       }
       return blob;
     } catch (e) {
-      if (e instanceof AuthError) throw e;
       errors.push(`${WAY_LABELS[way]} : ${e.message || e}`);
     }
   }

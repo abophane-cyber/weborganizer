@@ -26,6 +26,7 @@
   state.blockContent = false;
   state.textfileError = false;
   state.fileopsFail = false;
+  state.fileopsAuthError = false; // file_open répond « Log in required » (1000)
   state.fds = {};
   state.nextFd = 1;
   state.ways = [];
@@ -63,6 +64,7 @@
         state.ways.push('text');
         return new Response(state.files[p.fileid].data);
       case 'file_open': {
+        if (state.fileopsAuthError) return new Response(JSON.stringify({ result: 1000, error: 'Log in required.' }), { headers: { 'content-type': 'application/json' } });
         if (state.fileopsFail) return new Response(JSON.stringify({ result: 2003, error: 'Access denied.' }), { headers: { 'content-type': 'application/json' } });
         const fd = state.nextFd++; state.fds[fd] = p.fileid; return ok({ fd, fileid: Number(p.fileid) });
       }
