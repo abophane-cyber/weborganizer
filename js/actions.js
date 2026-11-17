@@ -218,6 +218,15 @@ export function deleteGroup(catId, groupId) {
 export function moveGroup(catId, groupId, dir) {
   store.update(() => { const cat = findCategory(catId); move(cat.groups, cat.groups.findIndex(x => x.id === groupId), dir); });
 }
+// Nouvel ordre des sous-catégories (glisser-déposer des tuiles) : liste de leurs id.
+export function setGroupOrder(catId, ids) {
+  store.update(() => {
+    const cat = findCategory(catId);
+    if (!cat) return;
+    const rank = new Map(ids.map((id, i) => [id, i]));
+    cat.groups.sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
+  });
+}
 
 // ---- Cartes ----
 

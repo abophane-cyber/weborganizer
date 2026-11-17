@@ -230,6 +230,7 @@ function groupTile(cat, group, gi) {
   const n = group.cards.length;
   return h('a', {
     class: `card tile group-tile${group.color ? ' colored' : ''}`, href: `#c/${enc(cat.id)}/${enc(group.id)}`,
+    dataset: { gid: group.id }, draggable: 'false',
     style: group.color ? { '--card-bg': group.color } : null, title: `Ouvrir « ${group.name} »`,
     onclick: e => { e.preventDefault(); openView(cat.id, group.id); },
   },
@@ -273,7 +274,7 @@ function viewEl(view) {
     if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
     body = [
       direct,
-      cat.groups.length > 0 && h('div', { class: 'cards view-groups' }, cat.groups.map((g, gi) => groupTile(cat, g, gi))),
+      cat.groups.length > 0 && enableGroupDrag(h('div', { class: 'cards view-groups' }, cat.groups.map((g, gi) => groupTile(cat, g, gi))), cat),
       h('button', { type: 'button', class: 'add-group edit-only', onclick: () => actions.addGroup(cat.id) },
         svgIcon('plus', 14), 'Ajouter une sous-catégorie'),
     ];
@@ -296,6 +297,82 @@ function viewEl(view) {
       empty && h('p', { class: 'view-empty' }, 'Aucune carte pour l’instant. Ouvrez les Paramètres pour en ajouter.'),
     ),
   );
+}
+
+// ---- Glisser-déposer des sous-catégories dans leur grille (mode édition) ----
+// On saisit une tuile n'importe où (sauf ses boutons) : elle suit la souris et les
+// autres glissent pour lui faire de la place ; au lâcher, l'ordre est enregistré.
+// Les tuiles restent toujours rangées dans la grille, donc toujours alignées.
+function enableGroupDrag(grid, cat) {
+  grid.addEventListener('pointerdown', e => {
+    if (!document.body.classList.contains('editing') || e.button !== 0) return;
+    const tile = e.target.closest('.group-tile');
+    if (!tile || e.target.closest('.edit-controls')) return;
+    const start = tile.getBoundingClientRect();
+    const st = { x: e.clientX, y: e.clientY, offX: e.clientX - start.left, offY: e.clientY - start.top, moving: false };
+    const tiles = () => [...grid.querySelectorAll(':scope > .group-tile')];
+
+    // Les autres tuiles glissent en douceur vers leur nouvelle place.
+    const reorder = fn => {
+      const others = tiles().filter(t => t !== tile);
+      const before = new Map(others.map(t => [t, t.getBoundingClientRect()]));
+      fn();
+      for (const t of others) {
+        const a = before.get(t), b = t.getBoundingClientRect();
+        if (a.left === b.left && a.top === b.top) continue;
+        t.animate([{ transform: `translate(${a.left - b.left}px, ${a.top - b.top}px)` }, { transform: 'none' }],
+          { duration: 180, easing: 'ease-out' });
+      }
+    };
+    // La tuile saisie reste sous la souris, où que soit sa place dans la grille.
+    const follow = ev => {
+      tile.style.setProperty('--drag-t', 'none');
+      const r = tile.getBoundingClientRect();
+      tile.style.setProperty('--drag-t', `translate(${ev.clientX - st.offX - r.left}px, ${ev.clientY - st.offY - r.top}px) scale(1.04)`);
+    };
+
+    const onMove = ev => {
+      if (!st.moving) {
+        if (Math.hypot(ev.clientX - st.x, ev.clientY - st.y) < 6) return;
+        st.moving = true;
+        tile.setPointerCapture(e.pointerId);
+        tile.classList.add('tile-dragging');
+        document.body.classList.add('group-dragging');
+      }
+      ev.preventDefault();
+      // Tuile survolée : la tuile saisie prend sa place.
+      const over = tiles().find(t => {
+        if (t === tile) return false;
+        const r = t.getBoundingClientRect();
+        return ev.clientX >= r.left && ev.clientX <= r.right && ev.clientY >= r.top && ev.clientY <= r.bottom;
+      });
+      if (over) {
+        const list = tiles();
+        const after = list.indexOf(over) > list.indexOf(tile);
+        reorder(() => over.insertAdjacentElement(after ? 'afterend' : 'beforebegin', tile));
+      }
+      follow(ev);
+    };
+    const onUp = () => {
+      removeEventListener('pointermove', onMove);
+      removeEventListener('pointerup', onUp);
+      removeEventListener('pointercancel', onUp);
+      if (!st.moving) return;
+      // Le clic qui suit le lâcher ne doit pas ouvrir la sous-catégorie.
+      const swallow = ev => { ev.preventDefault(); ev.stopPropagation(); };
+      addEventListener('click', swallow, { capture: true, once: true });
+      setTimeout(() => removeEventListener('click', swallow, { capture: true }), 0);
+      setTimeout(() => document.body.classList.remove('group-dragging'), 0);
+      tile.classList.remove('tile-dragging');
+      tile.style.removeProperty('--drag-t');
+      const ids = tiles().map(t => t.dataset.gid);
+      if (ids.join() !== cat.groups.map(g => g.id).join()) actions.setGroupOrder(cat.id, ids);
+    };
+    addEventListener('pointermove', onMove);
+    addEventListener('pointerup', onUp);
+    addEventListener('pointercancel', onUp);
+  });
+  return grid;
 }
 
 // ---- Glisser-déposer des catégories (mode édition, par la poignée) ----
