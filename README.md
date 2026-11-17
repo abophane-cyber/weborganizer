@@ -28,6 +28,11 @@ sont sur **pCloud** (dossier `WebOrganizer/`) et en cache local dans le navigate
 - **Mode édition** : les boutons modifier / supprimer / déplacer n'apparaissent que
   lorsque le panneau Paramètres est ouvert. On y ajoute catégories, **sous-catégories**
   et cartes ; le champ « Emplacement » d'une carte permet de la déplacer ailleurs.
+- **Recherche** : la barre sous le titre filtre les cartes (nom, adresse, e-mail,
+  dossier de profil, badge, catégorie), sans tenir compte des accents. Touche `/`
+  pour y aller, Entrée pour ouvrir la première carte, Échap pour effacer.
+- **Repli** : la flèche à gauche du titre replie une catégorie ou une sous-catégorie.
+- **Logo** : image ronde au-dessus du titre (Paramètres → Général).
 - Les médias qui ne sont plus utilisés depuis plus d'une heure sont mis à la **corbeille
   pCloud** (récupérables).
 
@@ -52,12 +57,18 @@ js/transfer.js, zip.js  export / import .zip
 sw.js                   service worker (fonctionnement hors connexion)
 installateur-profils/   protocole Windows chromeprofile:// (.reg + .vbs)
 tests/                  tests de synchronisation avec un faux pCloud
+scripts/stamp-version.mjs   numérotation des fichiers à la publication
+.github/workflows/deploy.yml publication automatique sur GitHub Pages
 ```
+
+La page se publie automatiquement à chaque `git push` (GitHub Actions). Le workflow
+copie le site et numérote les fichiers (`?v=<commit>`) pour qu'un navigateur ne
+mélange jamais deux versions.
 
 Le dépôt est public : il ne contient aucune donnée personnelle ni aucune clé secrète.
 Le Client ID pCloud n'est pas secret.
 
-Après l'ajout d'un nouveau fichier JS, ajoutez-le à la liste `ASSETS` de `sw.js` et
-augmentez la version `CACHE`.
+Après l'ajout d'un nouveau fichier JS, ajoutez-le à la liste `ASSETS` de `sw.js`
+(la version du cache est mise à jour automatiquement à la publication).
 
 Créé par Sillonphane

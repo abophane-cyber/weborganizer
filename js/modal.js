@@ -40,7 +40,7 @@ export function field(label, input, help) {
 }
 
 // Champ image : URL web, ou fichier envoyé dans media/ (référence "media:…").
-export function imageField(label, value, { accept = 'image/*', help, emoji = false } = {}) {
+export function imageField(label, value, { accept = 'image/*', help, emoji = false, onChange } = {}) {
   let current = value || '';
   const preview = h('span', { class: 'image-preview' });
   const text = h('input', {
@@ -51,8 +51,11 @@ export function imageField(label, value, { accept = 'image/*', help, emoji = fal
   const fileInput = h('input', { type: 'file', accept, hidden: true });
   const clearBtn = h('button', { type: 'button', class: 'btn small', onclick: () => set('') }, 'Retirer');
 
+  let ready = false;
   function set(v) {
+    const changed = v !== current;
     current = v;
+    if (ready && changed && onChange) onChange(v);
     if (!isMediaRef(v)) text.value = v;
     else text.value = '';
     fileName.textContent = isMediaRef(v) ? (mediaInfo(v)?.name || 'Fichier') : '';
@@ -66,6 +69,7 @@ export function imageField(label, value, { accept = 'image/*', help, emoji = fal
     fileInput.value = '';
   });
   set(current);
+  ready = true;
 
   const el = h('div', { class: 'field' },
     h('span', { class: 'field-label' }, label),

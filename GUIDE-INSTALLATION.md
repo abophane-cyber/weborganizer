@@ -59,10 +59,16 @@ Lors du premier `git push`, une fenêtre GitHub demande de vous connecter : acce
 ### 1.3 Activer GitHub Pages
 
 1. Sur la page du dépôt : **Settings** → menu de gauche **Pages**.
-2. *Build and deployment* → *Source* : **Deploy from a branch**.
-3. *Branch* : **main**, dossier **/ (root)** → **Save**.
-4. Patientez 1 à 2 minutes, puis rechargez la page **Settings → Pages** : le lien
-   **https://abophane-cyber.github.io/weborganizer/** apparaît en haut.
+2. *Build and deployment* → *Source* : **GitHub Actions**.
+3. C'est tout : à chaque `git push`, le workflow `.github/workflows/deploy.yml`
+   publie le site (onglet **Actions** du dépôt pour suivre la publication, ≈ 1 minute).
+4. Le lien **https://abophane-cyber.github.io/weborganizer/** apparaît en haut de
+   **Settings → Pages**.
+
+> Pourquoi un workflow ? Il numérote les fichiers à chaque publication
+> (`util.js?v=…`). Sans ça, juste après une mise à jour, le navigateur pourrait
+> mélanger anciens et nouveaux fichiers en cache, et la page resterait blanche
+> jusqu'à 10 minutes. Vos fichiers dans le dépôt ne sont pas modifiés.
 
 Pour publier une modification plus tard : `git add .`, puis `git commit -m "…"`, puis `git push`.
 

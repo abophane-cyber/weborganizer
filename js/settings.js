@@ -6,6 +6,7 @@ import * as sync from './sync.js';
 import { addMediaFile, isMediaRef, mediaInfo } from './media.js';
 import { kindFor } from './background.js';
 import { exportZip, importZip } from './transfer.js';
+import { imageField } from './modal.js';
 
 let panel;
 let inputs = {};
@@ -123,7 +124,12 @@ function generalSection() {
   inputs.title = bind(title, c => c.title, (c, i) => { c.title = i.value; });
   inputs.desc = bind(desc, c => c.description, (c, i) => { c.description = i.value; });
   inputs.footer = bind(footer, c => c.footer, (c, i) => { c.footer = i.value; });
+  const logo = imageField('Logo (au-dessus du titre)', store.get().logo, {
+    help: 'Image ronde affichée au-dessus du titre. Une URL ou un fichier ; vide : pas de logo.',
+    onChange: v => store.update(c => { c.logo = v; }),
+  });
   return section('Général',
+    logo.el,
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Titre'), title),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Description'), desc),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Pied de page'), footer),

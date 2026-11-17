@@ -22,6 +22,7 @@ export function defaultConfig() {
     title: 'WebOrganizer',
     description: 'Ma page d’accueil',
     footer: 'Créé par Sillonphane',
+    logo: '',
     theme: { accent: '#6ea8fe', panelOpacity: 0.55 },
     background: { src: '', kind: 'image', overlay: 0.35 },
     media: {},

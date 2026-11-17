@@ -6,9 +6,22 @@ import { renderBoard } from './board.js';
 import { renderBackground } from './background.js';
 import { initSettings, toggle as toggleSettings } from './settings.js';
 import { h, toast } from './util.js';
+import { imageEl } from './icons.js';
+import { initSearch } from './board.js';
+
+let renderedLogo = null;
+function renderLogo(src) {
+  const box = document.getElementById('logo');
+  // Réessaie si l'image n'était pas encore disponible (média en cours de téléchargement).
+  if (src === renderedLogo && box.firstChild && !box.querySelector('.icon-fallback')) return;
+  renderedLogo = src;
+  box.hidden = !src;
+  box.replaceChildren(src ? imageEl(src, store.get().title, 'logo-img') : '');
+}
 
 function renderHeader() {
   const c = store.get();
+  renderLogo(c.logo);
   document.getElementById('title').textContent = c.title;
   document.getElementById('desc').textContent = c.description;
   document.getElementById('footer').textContent = c.footer;
@@ -47,6 +60,7 @@ async function start() {
   await store.load();
   render();
   store.subscribe(render);
+  initSearch(document.getElementById('search'), document.getElementById('board'));
   initSettings();
   await sync.init();
   welcomeBanner();

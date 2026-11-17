@@ -146,5 +146,67 @@ export function renderBoard(root) {
     ...cfg.categories.map((cat, i) => categoryEl(cat, i, cfg.categories.length)),
     h('button', { type: 'button', class: 'add-category edit-only', onclick: () => actions.addCategory() },
       svgIcon('plus', 18), 'Ajouter une catégorie'),
+    h('p', { class: 'search-empty', hidden: true }, 'Aucune carte ne correspond à la recherche.'),
   );
+  applySearch(root);
+}
+
+// ---- Recherche ----
+// Filtre les cartes affichées (nom, adresse, e-mail, dossier de profil, badge, catégorie).
+// Sans accents ni majuscules ; chaque mot tapé doit être trouvé.
+
+let query = '';
+const fold = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+function cardText(card, cat, group) {
+  return fold([card.title, card.url, gmailInfo(card.url || '')?.email, card.profileDir, card.badge,
+    cat.name, group?.name].filter(Boolean).join(' '));
+}
+
+function applySearch(root) {
+  const words = fold(query).split(/\s+/).filter(Boolean);
+  document.body.classList.toggle('searching', words.length > 0);
+  const cfg = store.get();
+  let shown = 0;
+  root.querySelectorAll('.category').forEach((section, ci) => {
+    const cat = cfg.categories[ci];
+    if (!cat) return;
+    let catShown = 0;
+    const holders = [{ el: section.querySelector(':scope > .cards'), list: cat.cards, group: null },
+      ...[...section.querySelectorAll(':scope > .group')].map((el, gi) => ({ el, list: cat.groups[gi].cards, group: cat.groups[gi] }))];
+    for (const { el, list, group } of holders) {
+      const cardEls = el.querySelectorAll(':scope .card:not(.add-card)');
+      let n = 0;
+      list.forEach((card, i) => {
+        const ok = !words.length || words.every(w => cardText(card, cat, group).includes(w));
+        if (cardEls[i]) cardEls[i].hidden = !ok;
+        if (ok) n++;
+      });
+      if (group) el.hidden = words.length > 0 && n === 0;
+      catShown += n;
+    }
+    section.hidden = words.length > 0 && catShown === 0;
+    shown += catShown;
+  });
+  root.querySelector('.search-empty').hidden = !(words.length && shown === 0);
+}
+
+export function initSearch(input, root) {
+  input.addEventListener('input', () => { query = input.value; applySearch(root); });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { input.value = ''; query = ''; applySearch(root); input.blur(); }
+    if (e.key === 'Enter') {
+      // Entrée : ouvre la première carte trouvée.
+      const first = [...root.querySelectorAll('.card:not(.add-card)')].find(c => c.offsetParent);
+      if (first && query.trim()) { e.preventDefault(); first.click(); }
+    }
+  });
+  // Touche « / » : place le curseur dans la recherche (hors champs de saisie).
+  addEventListener('keydown', e => {
+    if (e.key !== '/' || e.ctrlKey || e.metaKey || e.altKey) return;
+    const t = e.target;
+    if (t.closest && t.closest('input, textarea, select, [contenteditable], dialog')) return;
+    e.preventDefault();
+    input.focus();
+  });
 }
