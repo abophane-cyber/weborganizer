@@ -43,7 +43,7 @@ export const EMAIL_RE = /^[^\s@/:?#]+@[^\s@/:?#]+\.[a-z]{2,}$/i;
 export function gmailInfo(link) {
   try {
     const u = new URL(link);
-    if (u.hostname !== 'mail.google.com') return null;
+    if (!['mail.google.com', 'gmail.com', 'www.gmail.com'].includes(u.hostname)) return null;
     const who = u.searchParams.get('authuser') || '';
     return { email: EMAIL_RE.test(who) ? who : '' };
   } catch { return null; }

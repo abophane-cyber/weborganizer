@@ -43,13 +43,14 @@ function linkCard(ctx, card, i) {
   );
 }
 
-// Style « aux couleurs de Gmail » : fond clair, liseré rouge (ou couleur choisie), nom + adresse.
+// Style « aux couleurs de Gmail » : liseré rouge, nom + adresse.
+// Fond clair par défaut, ou la couleur personnalisée (texte blanc).
 function gmailCard(ctx, card, i, url, email, color) {
   const name = card.title || email || 'Gmail';
   return h('a', {
-    class: 'card link-card gmail-card', href: url, target: '_blank', rel: 'noopener noreferrer',
+    class: `card link-card gmail-card${color ? ' colored' : ''}`, href: url, target: '_blank', rel: 'noopener noreferrer',
     title: email ? `Ouvrir la boîte ${email}` : 'Ouvrir Gmail',
-    style: color ? { '--gmail-accent': color } : null,
+    style: color ? { '--card-bg': color } : null,
   },
     iconEl(card.icon || faviconFor(url), name, 'card-icon'),
     h('span', { class: 'card-text' },

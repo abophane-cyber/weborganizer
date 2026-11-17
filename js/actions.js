@@ -165,7 +165,7 @@ function cardForm(card, location, onSave) {
   const linkColorRow = h('div', { class: 'field' },
     h('label', { class: 'check-row' }, useLinkColor, h('span', { class: 'field-label' }, 'Couleur personnalisée')),
     linkColor.el,
-    h('span', { class: 'field-help' }, 'Fond coloré et texte blanc. Pour une carte Gmail : couleur du liseré à gauche. Décoché : style habituel.'));
+    h('span', { class: 'field-help' }, 'Fond coloré et texte blanc. Décoché : style habituel (fond clair pour une carte Gmail).'));
   const syncLinkColor = () => { linkColor.el.hidden = !useLinkColor.checked; };
   useLinkColor.addEventListener('change', syncLinkColor);
   syncLinkColor();

@@ -137,6 +137,14 @@ button, input, select { font: inherit; color: inherit; }
 .gmail-card .edit-btn { color: #202124; }
 .gmail-card .edit-btn:hover { background: rgba(0, 0, 0, 0.08); }
 .gmail-card .icon-fallback { background: var(--gmail-accent); color: #fff; }
+/* Carte Gmail avec couleur personnalisée : fond coloré, texte blanc, liseré rouge conservé. */
+.gmail-card.colored { background: var(--card-bg); color: #fff; border-color: rgba(255, 255, 255, 0.14); border-left-color: var(--gmail-accent); }
+.gmail-card.colored:hover { background: var(--card-bg); }
+.gmail-card.colored .card-email { color: rgba(255, 255, 255, 0.78); }
+.gmail-card.colored .badge { background: rgba(255, 255, 255, 0.2); color: #fff; }
+.gmail-card.colored .edit-btn { color: #fff; }
+.gmail-card.colored .edit-btn:hover { background: rgba(255, 255, 255, 0.18); }
+.gmail-card.colored .card-icon { background: #fff; border-radius: 6px; padding: 2px; }
 
 .check-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .check-row input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
