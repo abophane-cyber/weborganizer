@@ -2,7 +2,7 @@
 
 // Client ID de l'application pCloud (https://docs.pcloud.com/my_apps/).
 // Il n'est pas secret. Remplacez la valeur ci-dessous par le vôtre.
-export const PCLOUD_CLIENT_ID = 'COLLER_ICI_VOTRE_CLIENT_ID';
+export const PCLOUD_CLIENT_ID = 'gDUIsKSIRj8';
 
 // Dossier pCloud qui contient config.json et media/.
 export const PCLOUD_FOLDER = '/WebOrganizer';
