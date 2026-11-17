@@ -47,10 +47,8 @@ function linkCard(ctx, card, i) {
     'aria-disabled': url ? null : 'true',
   },
     avatarEl(card.icon || faviconFor(url), name),
-    h('span', { class: 'card-text' },
-      h('span', { class: 'card-name' }, name),
-      email && email !== name && h('span', { class: 'card-sub' }, email),
-    ),
+    // Seulement le nom : l'adresse e-mail apparaît au survol (title).
+    h('span', { class: 'card-text' }, h('span', { class: 'card-name' }, name)),
     card.badge && h('span', { class: 'badge' }, card.badge),
     cardControls(ctx, card, i),
   );
