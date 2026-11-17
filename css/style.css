@@ -507,8 +507,6 @@ body.editing .cat-view { --n: var(--ne); }
 .cat-view .cards { grid-template-columns: repeat(auto-fit, 210px); justify-content: start; gap: 18px; }
 .cat-view .add-group { margin-left: auto; margin-right: auto; }
 .cat-view .tile { min-height: 150px; }
-.cat-view .view-groups { margin-top: 18px; }
-.cat-view .edit-only-grid + .view-groups { margin-top: 0; }
 .cat-view .add-group { max-width: 380px; margin-top: 18px; }
 .group-tile .avatar { color: #fff; }
 .view-empty { color: var(--muted); text-align: center; margin: 32px 0; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
@@ -852,15 +850,6 @@ body.palette-nature .group.tinted {
 }
 body.palette-nature .group .group-head h3,
 body.palette-nature .group .group-icon { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
-/* Tuiles de sous-catégories (écran d'une catégorie) : décalées par rapport aux cartes
-   pour ne pas reprendre les mêmes couleurs juste au-dessus */
-body.palette-nature .view-groups > :nth-child(4n+1) { --nat-tone: var(--nat-caramel); }
-body.palette-nature .view-groups > :nth-child(4n+2) { --nat-tone: var(--nat-sage); }
-body.palette-nature .view-groups > :nth-child(4n+3) { --nat-tone: var(--nat-sand); }
-body.palette-nature .view-groups > :nth-child(4n+4) { --nat-tone: var(--nat-cocoa); }
-body.palette-nature .view-groups > .card:not(.colored) { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
-body.palette-nature .view-groups > .card:nth-child(4n+3):not(.colored) { color: #3b2a1e; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
-body.palette-nature .cards.view-groups > .card:nth-child(4n+4):not(.colored) { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
 
 /* Bouton plein écran : rond fixe juste au-dessus du bouton Paramètres */
 .top .fullscreen-btn {
@@ -1036,7 +1025,7 @@ body:not(.searching) .category.closed .open-toggle h2,
    épaisse que les cartes : on voit tout de suite que ce
    n'est pas une carte mais un « contenant ». --gt-c : sa teinte (couleur choisie,
    teinte Nature ou gris par défaut). */
-body .cat-view .view-groups > .card.group-tile {
+body .cat-view .cards > .card.group-tile {
   --gt-c: var(--nat-tone, #8a93a6);
   background:
     linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%),
@@ -1050,10 +1039,10 @@ body .cat-view .view-groups > .card.group-tile {
   --bevel: inset 0 0 0 4px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.45),
            inset 0 0 22px color-mix(in srgb, var(--gt-c) 30%, transparent);
 }
-body .cat-view .view-groups > .card.group-tile.colored { --gt-c: var(--card-bg); }
+body .cat-view .cards > .card.group-tile.colored { --gt-c: var(--card-bg); }
 /* Clic : elle s'enfonce dans sa tranche, comme une carte */
-body .cat-view .view-groups > .card.group-tile:active { --thick: 3px; }
-body .cat-view .view-groups > .card.group-tile:hover {
+body .cat-view .cards > .card.group-tile:active { --thick: 3px; }
+body .cat-view .cards > .card.group-tile:hover {
   background:
     linear-gradient(150deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 100%),
     color-mix(in srgb, var(--gt-c) 50%, transparent);
@@ -1079,10 +1068,10 @@ body .cat-view .view-groups > .card.group-tile:hover {
     4px 4px 0 color-mix(in srgb, var(--gc-c) 48%, #000),
     7px 9px 8px rgba(0, 0, 0, 0.45);
 }
-/* Glisser-déposer des sous-catégories (mode édition) : on saisit la tuile entière. */
-body.editing .cat-view .view-groups > .group-tile { cursor: grab; touch-action: none; -webkit-user-drag: none; user-select: none; }
+/* Glisser-déposer des cartes et sous-catégories (mode édition) : on saisit la tuile entière. */
+body.editing .cat-view .cards > .card[data-key] { cursor: grab; touch-action: none; -webkit-user-drag: none; user-select: none; }
 body.group-dragging, body.group-dragging * { cursor: grabbing !important; }
-body .cat-view .view-groups > .card.group-tile.tile-dragging:nth-child(n) {
+body .cat-view .cards > .card.tile-dragging:nth-child(n) {
   transform: var(--drag-t, none) !important; transition: none; z-index: 5;
   --lift: 10px 22px 34px rgba(0, 0, 0, 0.55); --thick: 9px;
 }

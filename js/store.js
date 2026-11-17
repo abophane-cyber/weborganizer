@@ -85,6 +85,10 @@ export function normalize(cfg) {
       if (!/^#[0-9A-Fa-f]{6}$/.test(g.color || '')) delete g.color;
       g.cards = Array.isArray(g.cards) ? g.cards : [];
     }
+    // Ordre commun des cartes et sous-catégories sur l'écran de la catégorie
+    // ('c:<id carte>' / 'g:<id sous-catégorie>'), s'il a été choisi en les glissant.
+    if (Array.isArray(cat.order)) cat.order = cat.order.filter(k => typeof k === 'string');
+    else delete cat.order;
   }
   for (const holder of c.categories.flatMap(cat => [cat, ...cat.groups])) {
     holder.cards = Array.isArray(holder.cards) ? holder.cards : [];
@@ -167,6 +171,17 @@ export function columnLayout(cfg) {
 // Page de départ jamais modifiée (date 1970) : elle ne doit ni être envoyée dans
 // pCloud, ni remplacer une vraie page.
 export const isPristine = cfg => !cfg || !cfg.updatedAt || cfg.updatedAt === EPOCH;
+
+// Ordre des tuiles sur l'écran d'une catégorie : cartes et sous-catégories mêlées.
+// Sans ordre enregistré : les cartes, puis les sous-catégories. Ce qui manque à
+// l'ordre enregistré (ajouté depuis) vient à la fin.
+export function viewOrder(cat) {
+  const all = [...cat.cards.map(c => 'c:' + c.id), ...cat.groups.map(g => 'g:' + g.id)];
+  const exists = new Set(all);
+  const keys = [...new Set((cat.order || []).filter(k => exists.has(k)))];
+  const seen = new Set(keys);
+  return [...keys, ...all.filter(k => !seen.has(k))];
+}
 
 export function findCategory(id) { return config.categories.find(c => c.id === id); }
 export function findGroup(catId, groupId) { return findCategory(catId)?.groups.find(g => g.id === groupId); }

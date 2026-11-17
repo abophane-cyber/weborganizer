@@ -1,6 +1,6 @@
 // Affichage des catégories, sous-catégories et cartes.
 import { h, svgIcon, safeUrl, gmailInfo } from './util.js';
-import { store, columnLayout } from './store.js';
+import { store, columnLayout, viewOrder } from './store.js';
 import { iconEl, faviconFor } from './icons.js';
 import { glyph } from './icon-library.js';
 import { isMediaRef } from './media.js';
@@ -14,12 +14,15 @@ function editButton(icon, label, onclick, extra = '') {
   }, svgIcon(icon, 15));
 }
 
-// ctx : { cat, groupId, list } (list = cartes du conteneur)
+// ctx : { cat, groupId, list, keys?, drag? } (list = cartes du conteneur ;
+// keys = ordre commun cartes + sous-catégories sur l'écran de la catégorie, i y est l'index)
 function cardControls(ctx, card, i) {
-  const { cat, groupId, list } = ctx;
+  const { cat, groupId, list, keys } = ctx;
+  const shift = dir => (keys ? actions.moveInView(cat.id, 'c:' + card.id, dir) : actions.moveCard(cat.id, groupId, card.id, dir));
+  const n = keys ? keys.length : list.length;
   return h('div', { class: 'edit-controls card-controls' },
-    i > 0 && editButton('left', 'Déplacer avant', () => actions.moveCard(cat.id, groupId, card.id, -1)),
-    i < list.length - 1 && editButton('right', 'Déplacer après', () => actions.moveCard(cat.id, groupId, card.id, 1)),
+    i > 0 && editButton('left', 'Déplacer avant', () => shift(-1)),
+    i < n - 1 && editButton('right', 'Déplacer après', () => shift(1)),
     editButton('edit', 'Modifier la carte', () => actions.editCard(cat.id, groupId, card.id)),
     editButton('trash', 'Supprimer la carte', () => actions.deleteCard(cat.id, groupId, card.id), 'danger'),
   );
@@ -43,6 +46,7 @@ function linkCard(ctx, card, i) {
   const inProfile = url && /^https:/.test(url) && PROFILE_DIR_RE.test(card.openIn || '') ? card.openIn : '';
   return h('a', {
     class: `card tile link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`,
+    dataset: { key: 'c:' + card.id }, draggable: ctx.drag ? 'false' : null,
     href: inProfile ? profileUrl(inProfile, url) : (url || null),
     style: color ? { '--card-bg': color } : null,
     target: url && !inProfile ? '_blank' : null, rel: 'noopener noreferrer',
@@ -63,6 +67,7 @@ function chromeCard(ctx, card, i) {
   const valid = PROFILE_DIR_RE.test((card.profileDir || '').trim());
   return h('a', {
     class: 'card tile chrome-card colored', href: valid ? profileUrl(card.profileDir) : '#',
+    dataset: { key: 'c:' + card.id }, draggable: ctx.drag ? 'false' : null,
     style: { '--card-bg': card.color },
     title: valid ? `Ouvrir Chrome — profil « ${card.profileDir} »` : 'Dossier du profil à renseigner',
     onclick: e => { e.preventDefault(); openChromeProfile(card); },
@@ -74,13 +79,12 @@ function chromeCard(ctx, card, i) {
   );
 }
 
+const cardEl = (ctx, card, i) => (card.type === 'chrome' ? chromeCard(ctx, card, i) : linkCard(ctx, card, i));
+const addCardButton = ctx => h('button', { type: 'button', class: 'card add-card edit-only', onclick: () => actions.addCard(ctx.cat.id, ctx.groupId) },
+  svgIcon('plus', 16), 'Ajouter une carte');
+
 function cardsGrid(ctx) {
-  const { list } = ctx;
-  return h('div', { class: 'cards' },
-    list.map((card, i) => (card.type === 'chrome' ? chromeCard(ctx, card, i) : linkCard(ctx, card, i))),
-    h('button', { type: 'button', class: 'card add-card edit-only', onclick: () => actions.addCard(ctx.cat.id, ctx.groupId) },
-      svgIcon('plus', 16), 'Ajouter une carte'),
-  );
+  return h('div', { class: 'cards' }, ctx.list.map((card, i) => cardEl(ctx, card, i)), addCardButton(ctx));
 }
 
 // ---- Ouverture d'une catégorie / sous-catégorie sur un écran à part ----
@@ -226,11 +230,13 @@ function categoryEl(cat, pos) {
 // ---- Écran d'une catégorie ou d'une sous-catégorie ----
 // Bouton « Retour », titre au centre, puis les cartes ; pour une catégorie, ses
 // sous-catégories en tuiles qui ouvrent leur propre écran.
-function groupTile(cat, group, gi) {
+// i : place de la tuile parmi les cartes et sous-catégories (keys) de l'écran.
+function groupTile(cat, group, i, keys) {
   const n = group.cards.length;
+  const key = 'g:' + group.id;
   return h('a', {
     class: `card tile group-tile${group.color ? ' colored' : ''}`, href: `#c/${enc(cat.id)}/${enc(group.id)}`,
-    dataset: { gid: group.id }, draggable: 'false',
+    dataset: { key }, draggable: 'false',
     style: group.color ? { '--card-bg': group.color } : null, title: `Ouvrir « ${group.name} »`,
     onclick: e => { e.preventDefault(); openView(cat.id, group.id); },
   },
@@ -239,8 +245,8 @@ function groupTile(cat, group, gi) {
     // Nombre de cartes : gros chiffre en volume, comme un numéro de maison fixé au mur.
     h('span', { class: 'group-count', 'aria-label': `${n} carte${n > 1 ? 's' : ''}` }, String(n)),
     h('div', { class: 'edit-controls card-controls' },
-      gi > 0 && editButton('left', 'Déplacer avant', () => actions.moveGroup(cat.id, group.id, -1)),
-      gi < cat.groups.length - 1 && editButton('right', 'Déplacer après', () => actions.moveGroup(cat.id, group.id, 1)),
+      i > 0 && editButton('left', 'Déplacer avant', () => actions.moveInView(cat.id, key, -1)),
+      i < keys.length - 1 && editButton('right', 'Déplacer après', () => actions.moveInView(cat.id, key, 1)),
       editButton('edit', 'Modifier la sous-catégorie', () => actions.editGroup(cat.id, group.id)),
       editButton('trash', 'Supprimer la sous-catégorie', () => actions.deleteGroup(cat.id, group.id), 'danger'),
     ),
@@ -267,25 +273,29 @@ function viewEl(view) {
   );
   let body;
   if (group) {
-    body = cardsGrid({ cat, groupId: group.id, list: group.cards });
+    const ctx = { cat, groupId: group.id, list: group.cards, drag: true };
+    body = enableTileDrag(cardsGrid(ctx), keys => actions.setCardOrder(cat.id, group.id, keys.map(k => k.slice(2))));
   } else {
-    const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
-    // Pas de cartes directes mais des sous-catégories : la grille vide n'apparaît qu'en édition.
-    if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
+    // Cartes et sous-catégories dans une seule grille, dans l'ordre choisi.
+    const keys = viewOrder(cat);
+    const ctx = { cat, groupId: '', list: cat.cards, keys, drag: true };
+    const cards = new Map(cat.cards.map(c => ['c:' + c.id, c]));
+    const groups = new Map(cat.groups.map(g => ['g:' + g.id, g]));
     body = [
-      direct,
-      cat.groups.length > 0 && enableGroupDrag(h('div', { class: 'cards view-groups' }, cat.groups.map((g, gi) => groupTile(cat, g, gi))), cat),
+      enableTileDrag(h('div', { class: 'cards' },
+        keys.map((k, i) => (cards.has(k) ? cardEl(ctx, cards.get(k), i) : groupTile(cat, groups.get(k), i, keys))),
+        addCardButton(ctx),
+      ), next => actions.setViewOrder(cat.id, next)),
       h('button', { type: 'button', class: 'add-group edit-only', onclick: () => actions.addGroup(cat.id) },
         svgIcon('plus', 14), 'Ajouter une sous-catégorie'),
     ];
   }
   const empty = group ? !group.cards.length : !cat.cards.length && !cat.groups.length;
-  // Nombre de tuiles de la plus longue rangée (hors édition / en édition, avec la
-  // tuile « Ajouter une carte ») : le bloc prend exactement la largeur des tuiles,
+  // Nombre de tuiles de la rangée (hors édition / en édition, avec la tuile
+  // « Ajouter une carte ») : le bloc prend exactement la largeur des tuiles,
   // ainsi « Retour » se place juste au-dessus, sur leur bord gauche.
-  const cards = group ? group.cards.length : cat.cards.length;
-  const groups = group ? 0 : cat.groups.length;
-  const nv = Math.max(cards, groups), ne = Math.max(cards + 1, groups);
+  const tiles = group ? group.cards.length : cat.cards.length + cat.groups.length;
+  const nv = tiles, ne = tiles + 1;
   return h('section', {
     class: 'cat-view', 'aria-label': group ? group.name : cat.name,
     style: { ...(color ? { '--cat-color': color } : {}), '--nv': String(nv), '--ne': String(ne) },
@@ -299,18 +309,20 @@ function viewEl(view) {
   );
 }
 
-// ---- Glisser-déposer des sous-catégories dans leur grille (mode édition) ----
-// On saisit une tuile n'importe où (sauf ses boutons) : elle suit la souris et les
-// autres glissent pour lui faire de la place ; au lâcher, l'ordre est enregistré.
-// Les tuiles restent toujours rangées dans la grille, donc toujours alignées.
-function enableGroupDrag(grid, cat) {
+// ---- Glisser-déposer des tuiles d'un écran (mode édition) ----
+// Cartes et sous-catégories : on saisit une tuile n'importe où (sauf ses boutons),
+// elle suit la souris et les autres glissent pour lui faire de la place ; au lâcher,
+// onDrop reçoit le nouvel ordre (clés 'c:<id>' / 'g:<id>'). Les tuiles restent
+// toujours rangées dans la grille, donc toujours alignées.
+function enableTileDrag(grid, onDrop) {
+  const tiles = () => [...grid.querySelectorAll(':scope > .card[data-key]')];
   grid.addEventListener('pointerdown', e => {
     if (!document.body.classList.contains('editing') || e.button !== 0) return;
-    const tile = e.target.closest('.group-tile');
-    if (!tile || e.target.closest('.edit-controls')) return;
+    const tile = e.target.closest('.card[data-key]');
+    if (!tile || tile.parentElement !== grid || e.target.closest('.edit-controls')) return;
+    const initial = tiles().map(t => t.dataset.key).join();
     const start = tile.getBoundingClientRect();
     const st = { x: e.clientX, y: e.clientY, offX: e.clientX - start.left, offY: e.clientY - start.top, moving: false };
-    const tiles = () => [...grid.querySelectorAll(':scope > .group-tile')];
 
     // Les autres tuiles glissent en douceur vers leur nouvelle place.
     const reorder = fn => {
@@ -365,8 +377,8 @@ function enableGroupDrag(grid, cat) {
       setTimeout(() => document.body.classList.remove('group-dragging'), 0);
       tile.classList.remove('tile-dragging');
       tile.style.removeProperty('--drag-t');
-      const ids = tiles().map(t => t.dataset.gid);
-      if (ids.join() !== cat.groups.map(g => g.id).join()) actions.setGroupOrder(cat.id, ids);
+      const keys = tiles().map(t => t.dataset.key);
+      if (keys.join() !== initial) onDrop(keys);
     };
     addEventListener('pointermove', onMove);
     addEventListener('pointerup', onUp);

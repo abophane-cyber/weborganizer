@@ -1,6 +1,6 @@
 // Actions d'édition : catégories, sous-catégories et cartes.
 import { h, uid, safeUrl, gmailInfo, EMAIL_RE } from './util.js';
-import { store, findCategory, findGroup, findHolder, findCard, columnLayout, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
+import { store, findCategory, findGroup, findHolder, findCard, columnLayout, viewOrder, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
 import { openModal, field, imageField } from './modal.js';
 import { PROFILE_DIR_RE } from './chrome-profiles.js';
 
@@ -218,13 +218,36 @@ export function deleteGroup(catId, groupId) {
 export function moveGroup(catId, groupId, dir) {
   store.update(() => { const cat = findCategory(catId); move(cat.groups, cat.groups.findIndex(x => x.id === groupId), dir); });
 }
-// Nouvel ordre des sous-catégories (glisser-déposer des tuiles) : liste de leurs id.
-export function setGroupOrder(catId, ids) {
+// Écran d'une catégorie : cartes et sous-catégories dans un ordre commun (cat.order).
+// Les listes cat.cards et cat.groups suivent le même ordre, pour le reste de la page.
+function applyViewOrder(cat, keys) {
+  cat.order = keys;
+  const rank = new Map(keys.map((k, i) => [k, i]));
+  const r = k => rank.get(k) ?? 1e9;
+  cat.cards.sort((a, b) => r('c:' + a.id) - r('c:' + b.id));
+  cat.groups.sort((a, b) => r('g:' + a.id) - r('g:' + b.id));
+}
+// Glisser-déposer : keys = nouvel ordre des tuiles ('c:<id>' / 'g:<id>').
+export function setViewOrder(catId, keys) {
+  store.update(() => { const cat = findCategory(catId); if (cat) applyViewOrder(cat, keys); });
+}
+// Flèches gauche / droite sur l'écran de la catégorie.
+export function moveInView(catId, key, dir) {
   store.update(() => {
     const cat = findCategory(catId);
     if (!cat) return;
+    const keys = viewOrder(cat);
+    move(keys, keys.indexOf(key), dir);
+    applyViewOrder(cat, keys);
+  });
+}
+// Glisser-déposer des cartes d'une sous-catégorie : ids = nouvel ordre.
+export function setCardOrder(catId, groupId, ids) {
+  store.update(() => {
+    const holder = findHolder(catId, groupId);
+    if (!holder) return;
     const rank = new Map(ids.map((id, i) => [id, i]));
-    cat.groups.sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
+    holder.cards.sort((a, b) => (rank.get(a.id) ?? 1e9) - (rank.get(b.id) ?? 1e9));
   });
 }
 
