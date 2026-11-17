@@ -2,6 +2,7 @@
 import { h, svgIcon, safeUrl, gmailInfo } from './util.js';
 import { store, columnLayout } from './store.js';
 import { iconEl, faviconFor } from './icons.js';
+import { glyph } from './icon-library.js';
 import { isMediaRef } from './media.js';
 import { openChromeProfile, profileUrl, PROFILE_DIR_RE } from './chrome-profiles.js';
 import * as actions from './actions.js';
@@ -96,8 +97,12 @@ function collapseToggle(tag, label, collapsed, count, onToggle) {
 }
 
 function groupEl(cat, group, gi) {
-  return h('div', { class: `group${group.collapsed ? ' collapsed' : ''}` },
+  return h('div', {
+    class: `group${group.collapsed ? ' collapsed' : ''}${group.color ? ' tinted' : ''}`,
+    style: group.color ? { '--group-color': group.color } : null,
+  },
     h('div', { class: 'group-head' },
+      h('span', { class: 'group-icon', 'aria-hidden': 'true' }, glyph('folder', 15)),
       collapseToggle('h3', group.name, group.collapsed, group.cards.length, () => actions.toggleGroup(cat.id, group.id)),
       h('div', { class: 'edit-controls' },
         gi > 0 && editButton('up', 'Monter la sous-catégorie', () => actions.moveGroup(cat.id, group.id, -1)),
@@ -139,7 +144,10 @@ function categoryEl(cat, pos) {
   const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
   const cardCount = cat.cards.length + cat.groups.reduce((n, g) => n + g.cards.length, 0);
-  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id } },
+  return h('section', {
+    class: `category${cat.collapsed ? ' collapsed' : ''}${cat.color ? ' tinted' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id },
+    style: cat.color ? { '--cat-color': cat.color } : null,
+  },
     h('header', { class: 'category-head' },
       iconEl(cat.icon, cat.name, 'category-icon'),
       collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),

@@ -63,6 +63,7 @@ export function normalize(cfg) {
     cat.collapsed = !!cat.collapsed;
     if (cat.display !== 'dock') delete cat.display; // 'dock' : ronds sur le côté gauche
     if (cat.bare) cat.bare = true; else delete cat.bare; // carte seule, sans cadre ni titre
+    if (!/^#[0-9A-Fa-f]{6}$/.test(cat.color || '')) delete cat.color;
     if (!Number.isInteger(cat.column) || cat.column < 0) delete cat.column;
     if (cat.pos && Number.isFinite(cat.pos.x) && Number.isFinite(cat.pos.y)) {
       cat.pos = { x: Math.min(1, Math.max(0, cat.pos.x)), y: Math.max(0, Math.round(cat.pos.y)) };
@@ -72,6 +73,7 @@ export function normalize(cfg) {
       g.id ||= uid();
       g.name ??= 'Sous-catégorie';
       g.collapsed = !!g.collapsed;
+      if (!/^#[0-9A-Fa-f]{6}$/.test(g.color || '')) delete g.color;
       g.cards = Array.isArray(g.cards) ? g.cards : [];
     }
   }

@@ -14,6 +14,29 @@ const allCardsCount = cat => cat.cards.length + cat.groups.reduce((n, g) => n + 
 
 // ---- Catégories ----
 
+// Case « Couleur personnalisée » + palette / code (catégories et sous-catégories).
+function optionalColorField(current, help) {
+  const input = colorInput(current || '#2F5A61');
+  const use = h('input', { type: 'checkbox', checked: !!current });
+  const el = h('div', { class: 'field' },
+    h('label', { class: 'check-row' }, use, h('span', { class: 'field-label' }, 'Couleur personnalisée')),
+    input.el,
+    h('span', { class: 'field-help' }, help));
+  const sync = () => { input.el.hidden = !use.checked; };
+  use.addEventListener('change', sync);
+  sync();
+  return {
+    el,
+    get error() { return use.checked && !input.valid ? 'Code couleur invalide : utilisez le format #RRGGBB (ex. #6B3A4A).' : ''; },
+    get value() { return use.checked ? input.value : ''; },
+  };
+}
+
+// Enregistre ou retire la couleur (champ absent si vide).
+function applyColor(obj, color) {
+  if (color) obj.color = color; else delete obj.color;
+}
+
 function categoryForm(cat, onSave) {
   const name = h('input', { type: 'text', value: cat.name || '', required: true, maxlength: '60' });
   const icon = imageField('Icône', cat.icon, { emoji: true, icons: true, help: 'Une icône de la bibliothèque, une URL d’image, un fichier ou un emoji. Vide : initiale du nom.' });
@@ -22,13 +45,15 @@ function categoryForm(cat, onSave) {
     h('label', { class: 'check-row' }, dock, h('span', { class: 'field-label' }, 'Afficher en ronds sur le côté gauche')),
     h('span', { class: 'field-help' },
       'Les cartes deviennent des ronds dans une barre fixée au bord gauche ; le survol affiche leur fiche. '
-      + 'Pour les modifier, ouvrez les Paramètres : la catégorie réapparaît dans la page.'));
+      + 'Pour les modifier : Paramètres ouverts, cliquez sur un rond (corbeille pour supprimer, + pour ajouter).'));
+  const color = optionalColorField(cat.color, 'Teinte le cadre de la catégorie et sa bande de gauche. Décoché : fond neutre.');
   openModal({
     title: cat.id ? 'Modifier la catégorie' : 'Nouvelle catégorie',
-    body: [field('Nom', name), icon.el, dockRow],
+    body: [field('Nom', name), icon.el, color.el, dockRow],
     onSubmit: () => {
       if (!name.value.trim()) return 'Le nom est obligatoire.';
-      onSave({ name: name.value.trim(), icon: icon.value, display: dock.checked ? 'dock' : undefined });
+      if (color.error) return color.error;
+      onSave({ name: name.value.trim(), icon: icon.value, display: dock.checked ? 'dock' : undefined, color: color.value });
     },
   });
 }
@@ -37,6 +62,7 @@ export function addCategory() {
   categoryForm({ name: '', icon: '' }, v => store.update(c => {
     const cat = { id: uid(), ...v, cards: [], groups: [] };
     if (!cat.display) delete cat.display;
+    applyColor(cat, v.color);
     // En disposition libre : visible tout de suite, en haut au centre.
     if (c.theme.layout === 'free') cat.pos = { x: 0.5, y: 0 };
     c.categories.push(cat);
@@ -46,6 +72,7 @@ export function editCategory(id) {
   categoryForm(findCategory(id), v => store.update(() => {
     const cat = Object.assign(findCategory(id), v);
     if (!cat.display) delete cat.display;
+    applyColor(cat, v.color);
   }));
 }
 export function deleteCategory(id) {
@@ -145,21 +172,31 @@ export function moveCategory(id, dir) {
 
 function groupForm(group, onSave) {
   const name = h('input', { type: 'text', value: group.name || '', required: true, maxlength: '60' });
+  const color = optionalColorField(group.color, 'Teinte l’encadré de la sous-catégorie. Décoché : neutre.');
   openModal({
     title: group.id ? 'Modifier la sous-catégorie' : 'Nouvelle sous-catégorie',
-    body: [field('Nom', name)],
+    body: [field('Nom', name), color.el],
     onSubmit: () => {
       if (!name.value.trim()) return 'Le nom est obligatoire.';
-      onSave({ name: name.value.trim() });
+      if (color.error) return color.error;
+      onSave({ name: name.value.trim(), color: color.value });
     },
   });
 }
 
 export function addGroup(catId) {
-  groupForm({}, v => store.update(() => findCategory(catId).groups.push({ id: uid(), ...v, cards: [] })));
+  groupForm({}, v => store.update(() => {
+    const g = { id: uid(), name: v.name, cards: [] };
+    applyColor(g, v.color);
+    findCategory(catId).groups.push(g);
+  }));
 }
 export function editGroup(catId, groupId) {
-  groupForm(findGroup(catId, groupId), v => store.update(() => Object.assign(findGroup(catId, groupId), v)));
+  groupForm(findGroup(catId, groupId), v => store.update(() => {
+    const g = findGroup(catId, groupId);
+    g.name = v.name;
+    applyColor(g, v.color);
+  }));
 }
 export function deleteGroup(catId, groupId) {
   const g = findGroup(catId, groupId);
