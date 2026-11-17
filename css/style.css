@@ -964,7 +964,7 @@ body:not(.searching) .category.closed .category-head > .category-icon:not(.icon-
 
 /* ---- Horloge : en haut à gauche, même verre que la météo en face ---- */
 .clock {
-  position: absolute; z-index: 20; top: 22px; left: clamp(10px, 1.5vw, 20px);
+  position: absolute; z-index: 20; top: 22px; left: 12px; /* même bord que le dock */
   display: flex; flex-direction: column; align-items: flex-start; gap: 2px;
   padding: 10px 20px 10px 18px; border-radius: 20px; text-align: left;
   border: 1px solid rgba(255, 255, 255, 0.22); background: rgba(20, 24, 31, 0.72);
@@ -972,7 +972,7 @@ body:not(.searching) .category.closed .category-head > .category-icon:not(.icon-
   box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
 }
 .clock[hidden] { display: none; }
-body.has-dock .clock { left: 80px; }
+/* Avec le dock : l'horloge reste au-dessus des ronds, alignée sur leur bord gauche */
 .clock-line { display: flex; align-items: baseline; gap: 4px; line-height: 1; }
 .clock-time { font-weight: 800; font-size: 1.9rem; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
 .clock-sec { font-weight: 600; font-size: .95rem; color: var(--muted); font-variant-numeric: tabular-nums; }
