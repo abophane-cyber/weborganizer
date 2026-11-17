@@ -1,0 +1,15 @@
+Windows Registry Editor Version 5.00
+
+; Declare le protocole chromeprofile:// pour l'utilisateur actuel (pas besoin d'etre administrateur).
+; Le script doit se trouver dans C:\WebOrganizer\chromeprofile.vbs
+
+[HKEY_CURRENT_USER\Software\Classes\chromeprofile]
+@="URL:Chrome Profile"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\chromeprofile\shell]
+
+[HKEY_CURRENT_USER\Software\Classes\chromeprofile\shell\open]
+
+[HKEY_CURRENT_USER\Software\Classes\chromeprofile\shell\open\command]
+@="\"C:\\Windows\\System32\\wscript.exe\" \"C:\\WebOrganizer\\chromeprofile.vbs\" \"%1\""

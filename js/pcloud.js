@@ -1,0 +1,203 @@
+// Accès à pCloud : connexion OAuth (flux "token", sans serveur) et API HTTP JSON.
+// Le jeton est passé en paramètre access_token (l'API n'autorise pas l'en-tête
+// Authorization en CORS). Les jetons OAuth pCloud n'expirent pas : la connexion
+// reste valable d'une visite à l'autre tant qu'elle n'est pas révoquée.
+import { PCLOUD_CLIENT_ID, PCLOUD_FOLDER } from './app-config.js';
+
+const LS_AUTH = 'wo.pcloud.auth';
+const SS_STATE = 'wo.pcloud.state';
+
+let auth = readAuth();   // { token, host, email? }
+let folders = null;      // { root, media } (folderid)
+const authListeners = new Set();
+
+function readAuth() {
+  try { return JSON.parse(localStorage.getItem(LS_AUTH)) || null; } catch { return null; }
+}
+function writeAuth(a) {
+  auth = a;
+  try {
+    if (a) localStorage.setItem(LS_AUTH, JSON.stringify(a));
+    else localStorage.removeItem(LS_AUTH);
+  } catch { /* stockage indisponible */ }
+  folders = null;
+  for (const fn of authListeners) fn(!!a);
+}
+
+export class AuthError extends Error {}
+
+export const isConfigured = () => !!PCLOUD_CLIENT_ID && !PCLOUD_CLIENT_ID.startsWith('COLLER_ICI');
+export const isConnected = () => !!auth?.token;
+export const accountEmail = () => auth?.email || '';
+export const onAuthChange = fn => authListeners.add(fn);
+
+function redirectUri() {
+  return location.origin + location.pathname;
+}
+
+// Redirige vers la page d'autorisation pCloud.
+export function connect() {
+  const state = crypto.randomUUID();
+  try { sessionStorage.setItem(SS_STATE, state); } catch { /* ignore */ }
+  const url = new URL('https://my.pcloud.com/oauth2/authorize');
+  url.searchParams.set('client_id', PCLOUD_CLIENT_ID);
+  url.searchParams.set('response_type', 'token');
+  url.searchParams.set('redirect_uri', redirectUri());
+  url.searchParams.set('state', state);
+  location.assign(url.toString());
+}
+
+// Au retour de pCloud : lit le jeton dans le fragment d'URL puis nettoie l'adresse.
+export function handleRedirect() {
+  if (!location.hash.includes('access_token=') && !location.hash.includes('error=')) return null;
+  const p = new URLSearchParams(location.hash.slice(1));
+  history.replaceState(null, '', location.pathname + location.search);
+  let expected = null;
+  try { expected = sessionStorage.getItem(SS_STATE); sessionStorage.removeItem(SS_STATE); } catch { /* ignore */ }
+  if (p.get('error')) return { error: p.get('error') };
+  if (!expected || p.get('state') !== expected) return { error: 'state' };
+  const host = p.get('hostname') || (p.get('locationid') === '2' ? 'eapi.pcloud.com' : 'api.pcloud.com');
+  if (!/^e?api\.pcloud\.com$/.test(host)) return { error: 'host' };
+  writeAuth({ token: p.get('access_token'), host });
+  return { ok: true };
+}
+
+export function disconnect() { writeAuth(null); }
+
+// ---- Appels API ----
+
+async function call(method, params = {}, init = {}) {
+  if (!auth?.token) throw new AuthError('Non connecté');
+  const url = new URL(`https://${auth.host}/${method}`);
+  url.searchParams.set('access_token', auth.token);
+  for (const [k, v] of Object.entries(params)) if (v != null) url.searchParams.set(k, v);
+  const res = await fetch(url, init);
+  if (!res.ok) throw new Error(`pCloud ${method} : HTTP ${res.status}`);
+  const data = await res.json();
+  if (data.result !== 0) {
+    // 1000 : connexion requise, 2000 : identifiants invalides, 2094 / 2095 : jeton invalide/expiré
+    if ([1000, 2000, 2094, 2095].includes(data.result)) {
+      writeAuth(null);
+      throw new AuthError(data.error || 'Session pCloud expirée');
+    }
+    const err = new Error(`pCloud ${method} : ${data.error || data.result}`);
+    err.code = data.result;
+    throw err;
+  }
+  return data;
+}
+
+export async function loadAccount() {
+  const info = await call('userinfo');
+  if (auth && info.email && auth.email !== info.email) writeAuthSilently({ ...auth, email: info.email });
+  return info;
+}
+function writeAuthSilently(a) {
+  auth = a;
+  try { localStorage.setItem(LS_AUTH, JSON.stringify(a)); } catch { /* ignore */ }
+}
+
+async function ensureFolders() {
+  if (folders) return folders;
+  const root = await call('createfolderifnotexists', { path: PCLOUD_FOLDER });
+  const media = await call('createfolderifnotexists', { folderid: root.metadata.folderid, name: 'media' });
+  folders = { root: root.metadata.folderid, media: media.metadata.folderid };
+  return folders;
+}
+
+// Fichiers du dossier principal, indexés par nom : { name: {fileid, hash, modified, size} }
+export async function listRoot() {
+  const { root } = await ensureFolders();
+  const data = await call('listfolder', { folderid: root, nofiles: undefined });
+  const map = {};
+  for (const item of data.metadata.contents || []) {
+    if (!item.isfolder) map[item.name] = item;
+  }
+  return map;
+}
+
+async function downloadBlob(fileid) {
+  const link = await call('getfilelink', { fileid, forcedownload: 1 });
+  const res = await fetch(`https://${link.hosts[0]}${link.path}`);
+  if (!res.ok) throw new Error(`Téléchargement pCloud : HTTP ${res.status}`);
+  return res.blob();
+}
+
+export async function downloadJson(fileid) {
+  try {
+    const blob = await downloadBlob(fileid);
+    return JSON.parse(await blob.text());
+  } catch (e) {
+    // Plan B : lecture directe par l'API (fichiers texte).
+    const url = new URL(`https://${auth.host}/gettextfile`);
+    url.searchParams.set('access_token', auth.token);
+    url.searchParams.set('fileid', fileid);
+    const res = await fetch(url);
+    if (!res.ok) throw e;
+    return JSON.parse(await res.text());
+  }
+}
+
+export const downloadMedia = fileid => downloadBlob(fileid);
+
+// Envoi d'un fichier (remplace un fichier du même nom ; pCloud garde l'ancien en révision).
+// Les requêtes multipart/form-data passent en CORS sans pré-vérification.
+function uploadTo(folderid, name, blob, onProgress) {
+  return new Promise((resolve, reject) => {
+    if (!auth?.token) return reject(new AuthError('Non connecté'));
+    const url = new URL(`https://${auth.host}/uploadfile`);
+    url.searchParams.set('access_token', auth.token);
+    url.searchParams.set('folderid', folderid);
+    url.searchParams.set('nopartial', '1');
+    url.searchParams.set('filename', name);
+    const form = new FormData();
+    form.append('file', blob, name);
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.responseType = 'json';
+    if (onProgress) xhr.upload.onprogress = e => e.lengthComputable && onProgress(e.loaded / e.total);
+    xhr.onload = () => {
+      const data = xhr.response;
+      if (xhr.status !== 200 || !data) return reject(new Error(`Envoi pCloud : HTTP ${xhr.status}`));
+      if (data.result !== 0) {
+        if ([1000, 2000, 2094, 2095].includes(data.result)) { writeAuth(null); return reject(new AuthError(data.error)); }
+        return reject(new Error(`Envoi pCloud : ${data.error || data.result}`));
+      }
+      resolve(data.metadata[0]);
+    };
+    xhr.onerror = () => reject(new Error('Réseau indisponible pendant l’envoi'));
+    xhr.send(form);
+  });
+}
+
+// Envoi avec nouvelles tentatives (utile pour les vidéos lourdes).
+async function uploadWithRetry(folderid, name, blob, onProgress, attempts = 3) {
+  for (let i = 1; ; i++) {
+    try {
+      return await uploadTo(folderid, name, blob, onProgress);
+    } catch (e) {
+      if (e instanceof AuthError || i >= attempts || !navigator.onLine) throw e;
+      await new Promise(r => setTimeout(r, 2000 * i));
+    }
+  }
+}
+
+export async function uploadMedia(name, blob, onProgress) {
+  const { media } = await ensureFolders();
+  return uploadWithRetry(media, name, blob, onProgress);
+}
+
+// Écrit config.json après avoir copié la version actuelle dans config.backup.json.
+export async function writeConfig(cfg, existing) {
+  const { root } = await ensureFolders();
+  if (existing?.fileid) {
+    await call('copyfile', { fileid: existing.fileid, tofolderid: root, toname: 'config.backup.json' });
+  }
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
+  return uploadWithRetry(root, 'config.json', blob);
+}
+
+// Met à la corbeille pCloud un média qui n'est plus utilisé (récupérable).
+export async function trashMedia(fileid) {
+  await call('deletefile', { fileid });
+}

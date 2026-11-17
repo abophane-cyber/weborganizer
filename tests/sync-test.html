@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tests synchro (pCloud simulé)</title>
+  <link rel="stylesheet" href="../css/style.css">
+  <script type="importmap">{ "imports": { "../js/app-config.js": "./app-config.test.js" } }</script>
+  <script src="mock-pcloud.js"></script>
+  <style>#results { position: fixed; left: 12px; bottom: 12px; z-index: 99; margin: 0; padding: 12px; background: #000c; border-radius: 10px; font: 13px/1.5 monospace; white-space: pre; }</style>
+</head>
+<body>
+  <!-- Page de test : utilise un faux serveur pCloud en mémoire. Ouvrir via http://localhost:8080/tests/sync-test.html -->
+  <div id="bg" aria-hidden="true"><div id="bg-media"></div><div id="bg-overlay"></div></div>
+  <div id="banner"></div>
+  <header class="top">
+    <div class="top-text"><h1 id="title"></h1><p id="desc"></p></div>
+    <button id="settings-btn" class="icon-btn settings-btn" type="button" aria-label="Paramètres">⚙<span class="sync-dot"></span></button>
+  </header>
+  <main id="board" class="board"></main>
+  <footer class="page-footer"><span id="footer"></span></footer>
+  <aside id="settings" class="settings" hidden></aside>
+  <div id="toasts" class="toasts"></div>
+  <pre id="results">Tests en cours…</pre>
+
+  <script type="module">
+    await new Promise(r => { const q = indexedDB.deleteDatabase('weborganizer'); q.onsuccess = q.onerror = q.onblocked = r; });
+    await import('../js/main.js');
+
+    const wait = ms => new Promise(r => setTimeout(r, ms));
+    const until = async (fn, ms = 5000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await fn()) return true; await wait(40); } return false; };
+    const out = [];
+    const check = (name, cond) => { out.push(`${cond ? 'OK   ' : 'ÉCHEC'} ${name}`); document.getElementById('results').textContent = out.join('\n'); };
+
+    await until(() => window.__wo);
+    const { store, sync } = window.__wo;
+    const M = window.__mock;
+    const root = () => M.findFolder('0', 'WebOrganizer');
+
+    check('1er lancement : config.json créé dans /WebOrganizer', await until(() => root() && M.findFile(root(), 'config.json')));
+    check('statut « Enregistré »', await until(() => sync.getStatus().status === 'saved'));
+
+    store.update(c => { c.title = 'Titre test'; });
+    check('statut « Synchronisation… » juste après une modification', sync.getStatus().status === 'syncing');
+    await until(() => sync.getStatus().status === 'saved');
+    const cfgId = M.findFile(root(), 'config.json');
+    const remote = JSON.parse(await M.files[cfgId].data.text());
+    check('modification envoyée sur pCloud', remote.title === 'Titre test');
+    check('config.backup.json copié avant écriture', !!M.findFile(root(), 'config.backup.json'));
+
+    const before = M.calls.filter(c => c === 'uploadfile').length;
+    for (let i = 0; i < 5; i++) { store.update(c => { c.description = 'd' + i; }); await wait(30); }
+    await wait(80);
+    await until(() => sync.getStatus().status === 'saved');
+    check('5 modifications rapides → 1 seul envoi', M.calls.filter(c => c === 'uploadfile').length - before === 1);
+
+    const newer = { ...remote, title: 'Depuis un autre PC', updatedAt: new Date(Date.now() + 60000).toISOString() };
+    M.putFile(root(), 'config.json', new Blob([JSON.stringify(newer)]));
+    await sync.syncNow();
+    check('version pCloud plus récente → elle l’emporte', store.get().title === 'Depuis un autre PC' && document.getElementById('title').textContent === 'Depuis un autre PC');
+
+    const { addMediaFile } = await import('../js/media.js');
+    const file = new File([new Uint8Array(1000)], 'fond.mp4', { type: 'video/mp4' });
+    const ref = await addMediaFile(file);
+    store.update(c => { c.background.src = ref; c.background.kind = 'video'; });
+    await until(() => sync.getStatus().status === 'saved' && store.get().media[ref.slice(6)]?.remoteId);
+    const mediaFolder = M.findFolder(root(), 'media');
+    check('vidéo envoyée dans media/', Object.values(M.files).some(f => f.parent === mediaFolder && f.name.endsWith('fond.mp4')));
+    const v = document.querySelector('.bg-video');
+    check('vidéo de fond : autoplay + loop + muted', !!v && v.muted && v.loop && v.autoplay);
+
+    const { makeZip, readZip } = await import('../js/zip.js');
+    const z = await makeZip([{ name: 'config.json', data: '{"a":"é"}' }, { name: 'media/x.bin', data: file }]);
+    const entries = await readZip(z);
+    check('zip : écriture puis relecture', entries.length === 2 && new TextDecoder().decode(entries[0].data) === '{"a":"é"}' && entries[1].data.length === 1000);
+
+    M.authFail = true;
+    store.update(c => { c.title = 'x'; });
+    check('jeton refusé → « Reconnexion à pCloud nécessaire »', await until(() => sync.getStatus().status === 'reauth'));
+
+    out.push('', 'Terminé.');
+    document.getElementById('results').textContent = out.join('\n');
+    window.__testsDone = out;
+  </script>
+</body>
+</html>
