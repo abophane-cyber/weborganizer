@@ -128,8 +128,9 @@ function categoryEl(cat, ci, total) {
       iconEl(cat.icon, cat.name, 'category-icon'),
       collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),
       h('div', { class: 'edit-controls' },
-        ci > 0 && editButton('up', 'Monter la catégorie', () => actions.moveCategory(cat.id, -1)),
-        ci < total - 1 && editButton('down', 'Descendre la catégorie', () => actions.moveCategory(cat.id, 1)),
+        h('span', { class: 'drag-handle', title: 'Glisser pour déplacer la catégorie', 'aria-hidden': 'true' }, svgIcon('grip', 16)),
+        ci > 0 && editButton('left', 'Déplacer la catégorie avant', () => actions.moveCategory(cat.id, -1)),
+        ci < total - 1 && editButton('right', 'Déplacer la catégorie après', () => actions.moveCategory(cat.id, 1)),
         editButton('edit', 'Modifier la catégorie', () => actions.editCategory(cat.id)),
         editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
       ),
@@ -141,10 +142,60 @@ function categoryEl(cat, ci, total) {
   );
 }
 
+// ---- Glisser-déposer des catégories (mode édition, par la poignée) ----
+let dragId = null;
+function clearDropMarks() {
+  document.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+}
+function enableCategoryDrag(section, cat) {
+  const handle = section.querySelector('.drag-handle');
+  // La catégorie n'est déplaçable que si on la saisit par sa poignée.
+  handle.addEventListener('pointerdown', () => { section.draggable = true; });
+  handle.addEventListener('pointerup', () => { if (!dragId) section.draggable = false; });
+  section.addEventListener('dragstart', e => {
+    if (!section.draggable) return;
+    dragId = cat.id;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', cat.name);
+    section.classList.add('dragging');
+  });
+  section.addEventListener('dragend', () => {
+    section.draggable = false;
+    section.classList.remove('dragging');
+    dragId = null;
+    clearDropMarks();
+  });
+  section.addEventListener('dragover', e => {
+    if (!dragId || dragId === cat.id) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const r = section.getBoundingClientRect();
+    const after = e.clientX > r.left + r.width / 2;
+    clearDropMarks();
+    section.classList.add(after ? 'drop-after' : 'drop-before');
+  });
+  section.addEventListener('dragleave', e => {
+    if (!section.contains(e.relatedTarget)) section.classList.remove('drop-before', 'drop-after');
+  });
+  section.addEventListener('drop', e => {
+    if (!dragId || dragId === cat.id) return;
+    e.preventDefault();
+    const after = section.classList.contains('drop-after');
+    const moved = dragId;
+    clearDropMarks();
+    actions.reorderCategory(moved, cat.id, after);
+  });
+}
+
 export function renderBoard(root) {
   const cfg = store.get();
+  const sections = cfg.categories.map((cat, i) => {
+    const el = categoryEl(cat, i, cfg.categories.length);
+    enableCategoryDrag(el, cat);
+    return el;
+  });
   root.replaceChildren(
-    ...cfg.categories.map((cat, i) => categoryEl(cat, i, cfg.categories.length)),
+    ...sections,
     h('button', { type: 'button', class: 'add-category edit-only', onclick: () => actions.addCategory() },
       svgIcon('plus', 18), 'Ajouter une catégorie'),
     h('p', { class: 'search-empty', hidden: true }, 'Aucune carte ne correspond à la recherche.'),

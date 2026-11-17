@@ -73,6 +73,7 @@ const PATHS = {
   close: 'M6 6l12 12M18 6L6 18',
   link: 'M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1',
   folder: 'M3 7h6l2 2h10v10H3z',
+  grip: 'M9 6h.01M15 6h.01M9 12h.01M15 12h.01M9 18h.01M15 18h.01',
 };
 export function svgIcon(name, size = 18) {
   const ns = 'http://www.w3.org/2000/svg';

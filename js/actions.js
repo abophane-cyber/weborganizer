@@ -47,6 +47,17 @@ export function toggleCategory(id) {
 export function toggleGroup(catId, groupId) {
   store.update(() => { const g = findGroup(catId, groupId); g.collapsed = !g.collapsed; });
 }
+// Glisser-déposer : place la catégorie `id` avant ou après `targetId`.
+export function reorderCategory(id, targetId, after) {
+  if (id === targetId) return;
+  store.update(c => {
+    const from = c.categories.findIndex(x => x.id === id);
+    if (from < 0) return;
+    const [cat] = c.categories.splice(from, 1);
+    const to = c.categories.findIndex(x => x.id === targetId);
+    c.categories.splice(to < 0 ? c.categories.length : to + (after ? 1 : 0), 0, cat);
+  });
+}
 export function moveCategory(id, dir) {
   store.update(c => move(c.categories, c.categories.findIndex(x => x.id === id), dir));
 }
