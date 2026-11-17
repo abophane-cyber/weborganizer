@@ -108,7 +108,29 @@ function groupEl(cat, group, gi) {
 
 // pos : { col, nCols, index, count } — place de la catégorie dans sa colonne,
 //       ou { free: true } en disposition libre (déplacement à la souris uniquement).
+// Carte seule : pas de cadre ni de titre ; en édition, seulement la poignée et les
+// boutons de déplacement (la carte garde ses boutons modifier / supprimer).
+function bareEl(cat, pos) {
+  const card = cat.cards[0];
+  return h('section', {
+    class: 'category bare', 'aria-label': card?.title || 'Carte', dataset: { id: cat.id },
+    style: { '--cat-w': '140px' },
+  },
+    h('header', { class: 'category-head' },
+      h('div', { class: 'edit-controls' },
+        h('span', { class: 'drag-handle', title: 'Glisser pour déplacer la carte', 'aria-hidden': 'true' }, svgIcon('grip', 16)),
+        !pos.free && pos.col > 0 && editButton('left', 'Colonne de gauche', () => actions.moveCategoryColumn(cat.id, -1)),
+        !pos.free && pos.col < pos.nCols - 1 && editButton('right', 'Colonne de droite', () => actions.moveCategoryColumn(cat.id, 1)),
+        !pos.free && pos.index > 0 && editButton('up', 'Monter', () => actions.moveCategoryInColumn(cat.id, -1)),
+        !pos.free && pos.index < pos.count - 1 && editButton('down', 'Descendre', () => actions.moveCategoryInColumn(cat.id, 1)),
+      ),
+    ),
+    cardsGrid({ cat, groupId: '', list: cat.cards }),
+  );
+}
+
 function categoryEl(cat, pos) {
+  if (cat.bare) return bareEl(cat, pos);
   // Cartes directes : masquées si vides et qu'il y a des sous-catégories (sauf en mode édition).
   const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');

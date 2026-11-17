@@ -69,6 +69,11 @@ function renderHeader() {
   applyLayout();
   document.getElementById('title').textContent = c.title;
   document.getElementById('desc').textContent = c.description;
+  // Titre et description vides : le bloc est caché (sinon son cadre d'édition
+  // apparaît comme un petit carré vide).
+  document.getElementById('title-block').hidden = !c.title && !c.description;
+  document.getElementById('title').hidden = !c.title;
+  document.getElementById('desc').hidden = !c.description;
   document.getElementById('footer').textContent = c.footer;
   document.title = c.title || 'WebOrganizer';
   const root = document.documentElement.style;

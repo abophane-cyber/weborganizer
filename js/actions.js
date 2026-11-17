@@ -37,6 +37,8 @@ export function addCategory() {
   categoryForm({ name: '', icon: '' }, v => store.update(c => {
     const cat = { id: uid(), ...v, cards: [], groups: [] };
     if (!cat.display) delete cat.display;
+    // En disposition libre : visible tout de suite, en haut au centre.
+    if (c.theme.layout === 'free') cat.pos = { x: 0.5, y: 0 };
     c.categories.push(cat);
   }));
 }
@@ -226,10 +228,17 @@ function colorInput(initial) {
   };
 }
 
-// Liste de tous les emplacements possibles : "catId|" ou "catId|groupId".
+// Liste de tous les emplacements possibles : "catId|", "catId|groupId",
+// ou « Carte seule » (NEW_BARE, ou la carte seule actuelle).
+const NEW_BARE = '__carte_seule__';
 function locationSelect(current) {
   const sel = h('select', {});
+  const currentCat = store.get().categories.find(c => current === `${c.id}|`);
+  sel.append(currentCat?.bare
+    ? h('option', { value: current, selected: true }, 'Carte seule (hors catégorie)')
+    : h('option', { value: `${NEW_BARE}|`, selected: current === `${NEW_BARE}|` }, 'Carte seule (hors catégorie)'));
   for (const cat of store.get().categories) {
+    if (cat.bare) continue;
     sel.append(h('option', { value: `${cat.id}|`, selected: current === `${cat.id}|` }, cat.name));
     for (const g of cat.groups) {
       sel.append(h('option', { value: `${cat.id}|${g.id}`, selected: current === `${cat.id}|${g.id}` }, `   ${cat.name} › ${g.name}`));
@@ -324,11 +333,32 @@ function cardForm(card, location, onSave) {
   });
 }
 
+// Place une carte dans son emplacement ; NEW_BARE crée une carte seule.
+function putCard(c, card, toCat, toGroup) {
+  if (toCat === NEW_BARE) {
+    const bare = { id: uid(), name: '', icon: '', bare: true, cards: [card], groups: [] };
+    // En disposition libre : visible tout de suite, en haut au centre.
+    if (c.theme.layout === 'free') bare.pos = { x: 0.5, y: 0 };
+    c.categories.push(bare);
+  } else {
+    findHolder(toCat, toGroup).cards.push(card);
+  }
+}
+// Une carte seule vidée de sa carte disparaît.
+function dropEmptyBare(c) {
+  c.categories = c.categories.filter(cat => !(cat.bare && cat.cards.length === 0));
+}
+
 export function addCard(catId, groupId = '') {
   const holder = findHolder(catId, groupId);
   const profiles = holder.cards.length && holder.cards.every(c => c.type === 'chrome');
   cardForm({ type: profiles ? 'chrome' : 'link' }, `${catId}|${groupId}`,
-    (v, toCat, toGroup) => store.update(() => findHolder(toCat, toGroup).cards.push({ id: uid(), ...v })));
+    (v, toCat, toGroup) => store.update(c => putCard(c, { id: uid(), ...v }, toCat, toGroup)));
+}
+
+export function addStandaloneCard() {
+  cardForm({ type: 'link' }, `${NEW_BARE}|`,
+    (v, toCat, toGroup) => store.update(c => putCard(c, { id: uid(), ...v }, toCat, toGroup)));
 }
 
 export function editCard(catId, groupId, cardId) {
@@ -339,7 +369,8 @@ export function editCard(catId, groupId, cardId) {
     Object.assign(card, v);
     if (toCat !== catId || toGroup !== groupId) {
       from.cards = from.cards.filter(c => c.id !== cardId);
-      findHolder(toCat, toGroup).cards.push(card);
+      putCard(store.get(), card, toCat, toGroup);
+      dropEmptyBare(store.get());
     }
   }));
 }
@@ -347,7 +378,11 @@ export function editCard(catId, groupId, cardId) {
 export function deleteCard(catId, groupId, cardId) {
   const card = findCard(catId, groupId, cardId);
   if (!confirm(`Supprimer la carte « ${card.title} » ?`)) return;
-  store.update(() => { const holder = findHolder(catId, groupId); holder.cards = holder.cards.filter(x => x.id !== cardId); });
+  store.update(c => {
+    const holder = findHolder(catId, groupId);
+    holder.cards = holder.cards.filter(x => x.id !== cardId);
+    dropEmptyBare(c);
+  });
 }
 
 export function moveCard(catId, groupId, cardId, dir) {

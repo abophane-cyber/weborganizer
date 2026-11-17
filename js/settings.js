@@ -8,6 +8,7 @@ import { kindFor } from './background.js';
 import { exportZip, importZip } from './transfer.js';
 import { imageField } from './modal.js';
 import { measurePositions } from './board.js';
+import * as actions from './actions.js';
 
 let panel;
 let inputs = {};
@@ -255,6 +256,10 @@ export function initSettings() {
       h('button', { type: 'button', class: 'icon-btn settings-close', 'aria-label': 'Fermer les paramètres', onclick: () => toggle(false) }, svgIcon('close')),
     ),
     h('p', { class: 'muted small edit-hint' }, 'Mode édition actif : les boutons modifier / supprimer apparaissent sur les catégories et les cartes.'),
+    h('div', { class: 'add-row' },
+      h('button', { type: 'button', class: 'btn primary', onclick: () => actions.addCategory() }, svgIcon('plus', 15), 'Catégorie'),
+      h('button', { type: 'button', class: 'btn', onclick: () => actions.addStandaloneCard() }, svgIcon('plus', 15), 'Carte seule'),
+    ),
     syncSection(),
     generalSection(),
     designSection(),

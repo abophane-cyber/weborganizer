@@ -188,6 +188,20 @@ body.editing .dock-delete:hover { background: #e5484d; }
 body.editing .dock-hint { display: block; }
 body.editing .dock-item .dock-avatar { cursor: pointer; }
 
+/* ---- Carte seule : sans cadre ni titre ---- */
+.category.bare {
+  width: var(--cat-w); padding: 0; background: none; border: 0; backdrop-filter: none; box-shadow: none;
+  align-self: flex-start;
+}
+.category.bare .category-head { display: none; }
+body.editing .category.bare .category-head { display: flex; justify-content: flex-start; margin-bottom: 4px; }
+body.editing .category.bare .edit-controls { padding: 2px; border-radius: 8px; background: rgba(10, 12, 16, 0.75); }
+.category.bare .cards { grid-template-columns: 1fr; }
+.category.bare .add-card { display: none !important; }
+
+/* Boutons d'ajout en haut du panneau Paramètres */
+.add-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+
 /* Disposition libre : les catégories sont posées où l'on veut sur un plan. */
 .board.board-free { align-items: stretch; }
 .board-canvas { position: relative; width: 100%; --cat-w: min(100%, 380px); transform-origin: 0 0; }
