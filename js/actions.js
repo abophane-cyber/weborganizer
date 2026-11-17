@@ -88,6 +88,20 @@ export function moveGroup(catId, groupId, dir) {
 
 // ---- Cartes ----
 
+// Boîtes Gmail : "adresse@gmail.com" -> lien qui ouvre ce compte précis.
+const EMAIL_RE = /^[^\s@/:?#]+@[^\s@/:?#]+\.[a-z]{2,}$/i;
+function gmailUrl(email) {
+  return `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(email.trim().toLowerCase())}`;
+}
+function gmailAddressFrom(link) {
+  try {
+    const u = new URL(link);
+    if (u.hostname !== 'mail.google.com') return '';
+    const who = u.searchParams.get('authuser') || '';
+    return EMAIL_RE.test(who) ? who : '';
+  } catch { return ''; }
+}
+
 // Couleur : palette + code hexadécimal saisi au clavier, synchronisés.
 const HEX_RE = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
 function normalizeHex(v) {
@@ -138,7 +152,7 @@ function cardForm(card, location, onSave) {
   );
   const where = locationSelect(location);
   const title = h('input', { type: 'text', value: card.title || '', maxlength: '60' });
-  const url = h('input', { type: 'url', value: card.url || '', placeholder: 'https://…' });
+  const url = h('input', { type: 'text', inputmode: 'url', value: card.url || '', placeholder: 'https://… ou adresse e-mail' });
   const profileDir = h('input', {
     type: 'text', value: card.profileDir || '', placeholder: 'Default, Profile 1…', maxlength: '64',
   });
@@ -147,7 +161,12 @@ function cardForm(card, location, onSave) {
   const icon = imageField('Icône', card.icon, { help: 'Vide : icône du site (favicon).' });
   const photo = imageField('Photo (dans le cercle)', card.photo, { help: 'Vide : initiale du nom.' });
 
-  const linkFields = h('div', { class: 'field-group' }, field('Adresse (URL)', url), icon.el);
+  const linkFields = h('div', { class: 'field-group' },
+    field('Adresse (URL)', url, 'Pour une boîte Gmail, tapez simplement l’adresse e-mail (ex. prenom.nom@gmail.com).'),
+    icon.el);
+  // Si c'est un lien Gmail déjà construit, on réaffiche l'adresse e-mail pour la modification.
+  const existingEmail = gmailAddressFrom(card.url);
+  if (existingEmail) url.value = existingEmail;
   const chromeFields = h('div', { class: 'field-group' },
     field('Dossier du profil', profileDir,
       'Dans Chrome, ouvrez chrome://version : à la ligne « Chemin d’accès au profil », reprenez le dernier dossier (Default, Profile 1…).'),
@@ -182,6 +201,11 @@ function cardForm(card, location, onSave) {
       } else {
         let u = url.value.trim();
         if (!u) return 'L’adresse est obligatoire.';
+        if (EMAIL_RE.test(u)) {
+          // Adresse e-mail : lien vers cette boîte Gmail précise.
+          onSave({ type: 'link', title: t || u, url: gmailUrl(u), icon: icon.value, badge: badge.value.trim() }, catId, groupId);
+          return;
+        }
         if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
         const safe = safeUrl(u);
         if (!safe) return 'Adresse refusée : seuls les liens http://, https:// et mailto: sont acceptés.';
