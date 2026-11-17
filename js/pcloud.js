@@ -73,7 +73,9 @@ async function call(method, params = {}, init = {}, { soft = false } = {}) {
   const url = new URL(`https://${auth.host}/${method}`);
   url.searchParams.set('access_token', auth.token);
   for (const [k, v] of Object.entries(params)) if (v != null) url.searchParams.set(k, v);
-  const res = await fetch(url, init);
+  // Sans en-tête Referer : pCloud refuse certaines méthodes (getfilelink : « Invalid link
+  // referer », 7010) quand la demande vient d'un autre site que pcloud.com.
+  const res = await fetch(url, { referrerPolicy: 'no-referrer', ...init });
   if (!res.ok) throw new Error(`pCloud ${method} : HTTP ${res.status}`);
   const data = await res.json();
   if (data.result !== 0) {
@@ -144,13 +146,13 @@ async function throwIfApiError(res, method) {
 
 async function viaLink(fileid) {
   const link = await call('getfilelink', { fileid, forcedownload: 1 }, {}, { soft: true });
-  const res = await fetch(`https://${link.hosts[0]}${link.path}`);
+  const res = await fetch(`https://${link.hosts[0]}${link.path}`, { referrerPolicy: 'no-referrer' });
   if (!res.ok) throw new Error(`lien direct : HTTP ${res.status}`);
   return res.blob();
 }
 
 async function viaTextFile(fileid) {
-  const res = await fetch(apiUrl('gettextfile', { fileid }));
+  const res = await fetch(apiUrl('gettextfile', { fileid }), { referrerPolicy: 'no-referrer' });
   if (!res.ok) throw new Error(`gettextfile : HTTP ${res.status}`);
   await throwIfApiError(res, 'gettextfile');
   return res.blob();
@@ -166,7 +168,7 @@ async function viaFileOps(fileid, size) {
     let offset = 0;
     while (offset < total) {
       const count = Math.min(4 * 1024 * 1024, total - offset);
-      const res = await fetch(apiUrl('file_pread', { fd, count, offset }));
+      const res = await fetch(apiUrl('file_pread', { fd, count, offset }), { referrerPolicy: 'no-referrer' });
       if (!res.ok) throw new Error(`file_pread : HTTP ${res.status}`);
       await throwIfApiError(res, 'file_pread');
       const buf = await res.arrayBuffer();
@@ -215,6 +217,13 @@ export async function downloadJson(fileid, size) {
 }
 
 export const downloadMedia = (fileid, size) => downloadBlob(fileid, size);
+
+// Lien direct (temporaire) vers un fichier, pour l'afficher dans <img> / <video> :
+// l'affichage ne demande pas l'autorisation CORS que la lecture exige.
+export async function mediaLink(fileid) {
+  const link = await call('getfilelink', { fileid }, {}, { soft: true });
+  return `https://${link.hosts[0]}${link.path}`;
+}
 
 // Envoi d'un fichier (remplace un fichier du même nom ; pCloud garde l'ancien en révision).
 // Les requêtes multipart/form-data passent en CORS sans pré-vérification.

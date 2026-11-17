@@ -44,7 +44,15 @@ export function resolve(ref) {
         try {
           blob = await cloud.downloadMedia(info.remoteId, info.size);
           await mediaPut(id, blob);
-        } catch (e) { console.warn('Média non téléchargé', id, e); }
+        } catch (e) {
+          console.warn('Média non téléchargé', id, e);
+          // Plan B : afficher directement depuis pCloud (sans copie locale).
+          try {
+            const link = await cloud.mediaLink(info.remoteId);
+            urls.set(id, link);
+            return link;
+          } catch (e2) { console.warn('Lien pCloud indisponible', id, e2); }
+        }
       }
     }
     if (!blob) return null;

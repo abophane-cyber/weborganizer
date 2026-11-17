@@ -4,7 +4,8 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
-  <meta name="referrer" content="strict-origin-when-cross-origin">
+  <!-- Aucun en-tête Referer : confidentialité, et pCloud refuse les liens si le Referer n'est pas pcloud.com. -->
+  <meta name="referrer" content="no-referrer">
   <!-- Politique de sécurité : seuls les scripts du site s'exécutent ; seules les API pCloud sont contactées. -->
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob: https:; media-src 'self' blob: https:; connect-src 'self' https://*.pcloud.com; object-src 'none'; base-uri 'none'; form-action 'none'; worker-src 'self'">
   <title>WebOrganizer</title>
