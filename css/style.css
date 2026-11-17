@@ -873,27 +873,42 @@ body.editing .top .fullscreen-btn { display: none; }
    L'ombre est composée de variables : chaque état (survol, dépôt…) change --lift,
    la tranche (--thick / --edge-c) reste toujours là. */
 .card, .group, .category:not(.bare) {
-  --thick: 6px;
-  --edge-c: rgba(0, 0, 0, 0.5);
+  --thick: 9px;
+  --edge-c: rgba(0, 0, 0, 0.55);
   --bevel: inset 0 2px 0 rgba(255, 255, 255, 0.22), inset 2px 0 0 rgba(255, 255, 255, 0.07),
            inset -2px 0 0 rgba(0, 0, 0, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.22);
   --lift: 3px 9px 16px rgba(0, 0, 0, 0.4);
-  box-shadow: var(--bevel), 0 var(--thick) 0 var(--edge-c), var(--lift) !important;
+  /* tranche + fin trait sombre qui la détache du fond */
+  box-shadow: var(--bevel), 0 var(--thick) 0 var(--edge-c),
+              0 calc(var(--thick) + 1px) 0 rgba(0, 0, 0, 0.45), var(--lift) !important;
 }
-.category:not(.bare) { --thick: 7px; }
-.group { --thick: 5px; }
+.category:not(.bare) { --thick: 10px; }
+.group { --thick: 7px; }
 /* La tranche reprend la couleur du pavé, en plus foncé */
-.card.colored { --edge-c: color-mix(in srgb, var(--card-bg) 50%, #000); }
+.card.colored { --edge-c: color-mix(in srgb, var(--card-bg) 40%, #000); }
 .category.tinted { --edge-c: color-mix(in srgb, var(--cat-color) 45%, #000); }
 .group.tinted { --edge-c: color-mix(in srgb, var(--group-color) 45%, #000); }
 body.palette-nature .card:not(.colored),
 body.palette-nature .group:not(.tinted),
-body.palette-nature .category.closed:not(.tinted) { --edge-c: color-mix(in srgb, var(--nat-tone, var(--nat-sage)) 50%, #000); }
+body.palette-nature .category.closed:not(.tinted) { --edge-c: color-mix(in srgb, var(--nat-tone, var(--nat-sage)) 40%, #000); }
 body.palette-nature .category:not(.closed):not(.tinted):not(.bare) { --edge-c: color-mix(in srgb, var(--nat-pine) 50%, #000); }
 /* Survol : le pavé se soulève ; clic : il s'enfonce dans sa tranche */
 .card:hover, .category.closed:hover { --lift: 4px 14px 22px rgba(0, 0, 0, 0.45); }
-.card:active { transform: translateY(3px) !important; --thick: 2px; }
+.card:active { transform: translateY(6px) !important; --thick: 3px; }
 /* Indicateurs de glisser-déposer et déplacement : gardent la priorité */
 .category.drop-before, body.palette-nature .category.drop-before { --lift: 0 -5px 0 var(--accent); }
 .category.drop-after, body.palette-nature .category.drop-after { --lift: 0 11px 0 var(--accent); }
 .board-canvas > .category.moving { --lift: 0 16px 40px rgba(0, 0, 0, 0.55); }
+
+/* Ronds du dock : même épaisseur, tranche de la couleur du rond */
+.dock-avatar {
+  --thick: 5px;
+  --edge-c: color-mix(in srgb, var(--card-bg, #3a4050) 40%, #000);
+  box-shadow: inset 0 2px 0 rgba(255, 255, 255, 0.28), inset 0 -2px 0 rgba(0, 0, 0, 0.25),
+              0 var(--thick) 0 var(--edge-c), 0 calc(var(--thick) + 1px) 0 rgba(0, 0, 0, 0.45),
+              2px 8px 14px rgba(0, 0, 0, 0.45) !important;
+  transition: transform .12s ease, border-color .12s ease, box-shadow .12s ease;
+}
+.dock-avatar.big { --thick: 7px; }
+.dock-item:hover .dock-avatar, .dock-item:focus-visible .dock-avatar { transform: translateY(-2px) scale(1.08); }
+.dock-item:active .dock-avatar { transform: translateY(4px); --thick: 1px; }
