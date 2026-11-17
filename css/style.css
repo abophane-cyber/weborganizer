@@ -1007,3 +1007,25 @@ body.palette-nature .clock {
 .snap-guide { position: absolute; z-index: 9; pointer-events: none; background: var(--accent); opacity: .85; }
 .snap-guide.v { top: 0; bottom: 0; width: 0; border-left: 1px dashed var(--accent); background: none; }
 .snap-guide.h { left: 0; right: 0; height: 0; border-top: 1px dashed var(--accent); background: none; }
+
+/* ---- Pavés de la page : tous exactement à la même taille ----
+   Catégories fermées et cartes seules ont la même hauteur fixe, qu'il y ait un
+   compteur ou non, en édition comme hors édition. Les boutons d'édition se posent
+   par-dessus le haut du pavé au lieu de l'agrandir ; un nom trop long tient sur 2 lignes. */
+:root { --tile-h: 170px; }
+body:not(.searching) .category.closed { height: var(--tile-h); min-height: 0; overflow: hidden; position: relative; }
+body:not(.searching) .board-canvas > .category.closed { position: absolute; }
+.category.bare .card.tile,
+body.editing .category.bare .card.tile { height: var(--tile-h); min-height: 0; overflow: hidden; }
+/* En édition : contenu un peu plus bas pour laisser la place aux boutons, hauteur inchangée */
+body.editing .category.bare .card.tile { padding-top: 34px; padding-bottom: 8px; }
+body.editing:not(.searching) .category.closed { padding-top: 38px; padding-bottom: 8px; }
+body.editing:not(.searching) .category.closed .edit-controls {
+  position: absolute; z-index: 2; top: 6px; left: 50%; transform: translateX(-50%);
+  flex-wrap: nowrap; padding: 2px; border-radius: 8px; background: rgba(10, 12, 16, 0.55);
+}
+body:not(.searching) .category.closed .open-toggle h2,
+.category.bare .card-name {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
+  white-space: normal; overflow: hidden;
+}
