@@ -7,7 +7,7 @@
 
   const meta = id => {
     const f = state.files[id];
-    return { fileid: Number(id), name: f.name, isfolder: false, hash: f.hash, size: f.data.size, parentfolderid: f.parent };
+    return { fileid: Number(id), name: f.name, isfolder: false, hash: f.hash, size: f.data.size, parentfolderid: f.parent, modified: f.modified };
   };
   const ok = obj => new Response(JSON.stringify({ result: 0, ...obj }), { headers: { 'content-type': 'application/json' } });
   const findFolder = (parent, name) => Object.entries(state.folders).find(([, f]) => f.parent === parent && f.name === name)?.[0];
@@ -15,7 +15,7 @@
   function putFile(parent, name, blob) {
     let id = findFile(parent, name);
     if (!id) id = String(state.nextId++);
-    state.files[id] = { name, parent, data: blob, hash: Math.floor(Math.random() * 1e12) };
+    state.files[id] = { name, parent, data: blob, hash: Math.floor(Math.random() * 1e12), modified: new Date().toUTCString() };
     return id;
   }
   state.putFile = putFile;

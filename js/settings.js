@@ -1,6 +1,6 @@
 // Panneau Paramètres : synchronisation, général, design & fond.
 import { h, svgIcon, toast, formatBytes } from './util.js';
-import { store } from './store.js';
+import { store, isPristine } from './store.js';
 import * as cloud from './pcloud.js';
 import * as sync from './sync.js';
 import { addMediaFile, isMediaRef, mediaInfo } from './media.js';
@@ -47,6 +47,22 @@ function fillInputs() {
 function syncSection() {
   const chip = h('span', { class: 'sync-chip' });
   const account = h('p', { class: 'muted small' });
+  const diag = h('p', { class: 'muted small diag' });
+  const fmt = d => { const t = d ? new Date(d) : null; return t && !isNaN(t) ? t.toLocaleString('fr-FR', { dateStyle: 'short', timeStyle: 'short' }) : '?'; };
+  const renderDiag = () => {
+    const c = store.get();
+    const i = sync.getInfo();
+    const local = isPristine(c) ? 'page de départ (jamais modifiée)'
+      : `« ${c.title || 'sans titre'} », ${c.categories.length} catégorie(s), modifiée le ${fmt(c.updatedAt)}`;
+    const remote = !cloud.isConnected() ? 'non connecté'
+      : i.remoteExists === null ? 'pas encore vérifié'
+        : i.remoteExists ? `config.json du ${fmt(i.remoteModified)}` : 'vide (aucune page enregistrée)';
+    diag.replaceChildren(
+      h('span', {}, `Cette page : ${local}`), h('br'),
+      h('span', {}, `pCloud : ${remote}`),
+      ...(i.lastSyncAt ? [h('br'), h('span', {}, `Dernière synchro : ${fmt(i.lastSyncAt)}`)] : []),
+    );
+  };
   const progress = h('p', { class: 'muted small progress-line', hidden: true });
   const actionBtn = h('button', { type: 'button', class: 'btn primary' });
   const syncBtn = h('button', { type: 'button', class: 'btn', onclick: () => sync.syncNow() }, 'Synchroniser maintenant');
@@ -73,7 +89,8 @@ function syncSection() {
         : 'Vos données sont enregistrées sur cet ordinateur. Connectez pCloud pour les sauvegarder et les retrouver ailleurs.';
   };
   actionBtn.addEventListener('click', () => cloud.connect());
-  sync.onStatus(render);
+  sync.onStatus(s => { render(s); renderDiag(); });
+  store.subscribe(renderDiag);
   cloud.onAuthChange(() => render(sync.getStatus()));
   sync.onProgress(p => {
     progress.hidden = !!p.done;
@@ -147,6 +164,7 @@ function syncSection() {
     h('div', { class: 'row' }, chip),
     asideBox,
     account,
+    diag,
     progress,
     h('div', { class: 'row wrap' }, actionBtn, syncBtn),
     h('div', { class: 'row wrap' }, exportBtn,

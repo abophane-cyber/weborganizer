@@ -18,6 +18,10 @@ const listeners = new Set();
 const progressListeners = new Set();
 
 export const getStatus = () => ({ status, detail });
+
+// Diagnostic affiché dans les Paramètres : où en sont la page locale et pCloud.
+const info = { remoteModified: null, remoteExists: null, lastSyncAt: null };
+export const getInfo = () => ({ ...info });
 export const onStatus = fn => { listeners.add(fn); fn(getStatus()); };
 export const onProgress = fn => progressListeners.add(fn);
 
@@ -85,6 +89,8 @@ async function doSync() {
   const files = await cloud.listRoot();
   const remote = files['config.json'] || null;
   const remoteHash = remote ? String(remote.hash) : null;
+  info.remoteExists = !!remote;
+  info.remoteModified = remote?.modified || null;
 
   // 1. Version distante modifiée ailleurs ?
   if (remote && remoteHash !== meta.remoteHash) {
@@ -104,6 +110,7 @@ async function doSync() {
       meta = { dirty: false, remoteHash };
       await saveMeta();
       await downloadMissingMedia();
+      info.lastSyncAt = new Date().toISOString();
       return setStatus('saved');
     }
     // Sinon : la version locale est plus récente, elle sera envoyée ci-dessous.
@@ -120,11 +127,14 @@ async function doSync() {
     const stamp = snapshot.updatedAt;
     const saved = await cloud.writeConfig(snapshot, remote);
     meta.remoteHash = String(saved.hash);
+    info.remoteExists = true;
+    info.remoteModified = saved.modified || new Date().toUTCString();
     meta.dirty = store.get().updatedAt !== stamp; // modifié pendant l'envoi ?
     await saveMeta();
   }
 
   await downloadMissingMedia();
+  info.lastSyncAt = new Date().toISOString();
   setStatus(meta.dirty ? 'syncing' : 'saved');
   if (meta.dirty) schedule();
 }
