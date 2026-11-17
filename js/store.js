@@ -25,8 +25,10 @@ export function defaultConfig() {
     logo: '',
     // Décalage (px) du logo et du titre par rapport à leur position centrée.
     layout: { logo: { x: 0, y: 0 }, title: { x: 0, y: 0 } },
-    theme: { accent: '#6ea8fe', panelOpacity: 0.55, cardStyle: 'tile', columns: 3, layout: 'columns' },
+    theme: { accent: '#6ea8fe', panelOpacity: 0.55, cardStyle: 'tile', columns: 3, layout: 'columns', palette: 'classic' },
     background: { src: '', kind: 'image', overlay: 0.35 },
+    // Météo affichée dans l'en-tête (ville et coordonnées).
+    weather: { enabled: true, city: 'Lille', lat: 50.63, lon: 3.06 },
     media: {},
     categories: [
       {
@@ -51,7 +53,14 @@ export function normalize(cfg) {
   const d = defaultConfig();
   const c = { ...d, ...(cfg || {}) };
   c.theme = { ...d.theme, ...(c.theme || {}) };
+  if (!['classic', 'nature'].includes(c.theme.palette)) c.theme.palette = 'classic';
   c.background = { ...d.background, ...(c.background || {}) };
+  c.weather = { ...d.weather, ...(c.weather || {}) };
+  c.weather.enabled = c.weather.enabled !== false;
+  if (!Number.isFinite(c.weather.lat) || !Number.isFinite(c.weather.lon)) {
+    c.weather = { ...d.weather, enabled: c.weather.enabled };
+  }
+  c.weather.city = String(c.weather.city || d.weather.city).slice(0, 80);
   const pos = p => ({ x: Number(p?.x) || 0, y: Number(p?.y) || 0 });
   c.layout = { logo: pos(c.layout?.logo), title: pos(c.layout?.title) };
   c.media = c.media && typeof c.media === 'object' ? c.media : {};

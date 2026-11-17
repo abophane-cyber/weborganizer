@@ -8,6 +8,7 @@ import { initSettings, toggle as toggleSettings } from './settings.js';
 import { h, toast } from './util.js';
 import { imageEl } from './icons.js';
 import { initSearch } from './board.js';
+import { initWeather } from './weather.js';
 
 let renderedLogo = null;
 function renderLogo(src) {
@@ -80,6 +81,7 @@ function renderHeader() {
   root.setProperty('--accent', c.theme.accent);
   root.setProperty('--panel-alpha', String(c.theme.panelOpacity));
   document.body.classList.toggle('cards-row', c.theme.cardStyle === 'row');
+  document.body.classList.toggle('palette-nature', c.theme.palette === 'nature');
 }
 
 function render() {
@@ -117,6 +119,7 @@ async function start() {
   initSearch(document.getElementById('search'), document.getElementById('board'));
   initMovable();
   initSettings();
+  initWeather();
   await sync.init();
   welcomeBanner();
 

@@ -1,12 +1,12 @@
 // Service worker : met l'application en cache pour un affichage hors connexion.
 // Stratégie "réseau d'abord" : les mises à jour du site arrivent dès qu'on est en ligne.
-const CACHE = 'weborganizer-v2';
+const CACHE = 'weborganizer-v3';
 const ASSETS = [
   './', './index.html', './css/style.css',
   './js/main.js', './js/app-config.js', './js/util.js', './js/db.js', './js/store.js',
   './js/media.js', './js/folder.js', './js/sync.js', './js/zip.js', './js/icons.js', './js/icon-library.js',
   './js/chrome-profiles.js', './js/board.js', './js/modal.js', './js/actions.js',
-  './js/background.js', './js/transfer.js', './js/settings.js',
+  './js/background.js', './js/transfer.js', './js/settings.js', './js/weather.js',
 ];
 
 self.addEventListener('install', e => {

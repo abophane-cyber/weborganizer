@@ -9,6 +9,7 @@ import { exportZip, importZip } from './transfer.js';
 import { imageField } from './modal.js';
 import { measurePositions } from './board.js';
 import * as actions from './actions.js';
+import { findCity } from './weather.js';
 
 let panel;
 let inputs = {};
@@ -217,6 +218,36 @@ function generalSection() {
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Titre'), title),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Description'), desc),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Pied de page'), footer),
+    weatherFields(),
+  );
+}
+
+// Météo : afficher ou non, et pour quelle ville.
+function weatherFields() {
+  const show = h('input', { type: 'checkbox' });
+  show.checked = store.get().weather.enabled;
+  show.addEventListener('change', () => store.update(c => { c.weather.enabled = show.checked; }));
+  store.subscribe(() => { show.checked = store.get().weather.enabled; });
+  const city = h('input', { type: 'text', maxlength: '80', placeholder: 'Ex. Lille' });
+  const status = h('span', { class: 'field-help' });
+  inputs.weatherCity = { input: city, read: c => c.weather.city };
+  const search = async () => {
+    const name = city.value.trim();
+    if (!name || name === store.get().weather.city) return;
+    status.textContent = 'Recherche…';
+    try {
+      const found = await findCity(name);
+      if (!found) { status.textContent = `Ville « ${name} » introuvable.`; return; }
+      store.update(c => { c.weather = { ...c.weather, ...found }; });
+      city.value = found.city;
+      status.textContent = `Météo de ${found.city}.`;
+    } catch (e) { status.textContent = `Recherche impossible : ${e.message}`; }
+  };
+  city.addEventListener('change', search);
+  city.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); search(); } });
+  return h('div', { class: 'field' },
+    h('label', { class: 'check-row' }, show, h('span', {}, 'Afficher la météo en haut de la page')),
+    h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Ville pour la météo'), city, status),
   );
 }
 
@@ -291,6 +322,14 @@ function designSection() {
   inputs.accent = bind(accent, c => c.theme.accent, (c, i) => { c.theme.accent = i.value; });
   const opacity = h('input', { type: 'range', min: '0', max: '0.95', step: '0.05' });
   inputs.opacity = bind(opacity, c => c.theme.panelOpacity, (c, i) => { c.theme.panelOpacity = Number(i.value); });
+  // Charte de couleurs : change l'ambiance de toute la page (et la couleur d'accent).
+  const palette = h('select', {},
+    h('option', { value: 'classic' }, 'Classique (bleu nuit)'),
+    h('option', { value: 'nature' }, 'Nature (verts, bruns, sable)'));
+  inputs.palette = bind(palette, c => c.theme.palette, (c, i) => {
+    c.theme.palette = i.value;
+    c.theme.accent = i.value === 'nature' ? '#e2b98f' : '#6ea8fe';
+  }, 'change');
   const cardStyle = h('select', {},
     h('option', { value: 'tile' }, 'Tuiles (comme les profils)'),
     h('option', { value: 'row' }, 'Lignes'));
@@ -316,6 +355,7 @@ function designSection() {
     h('div', { class: 'row' }, kind, applyUrl, removeBg),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Assombrissement du fond (voile) ', overlayOut), overlay),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Opacité des catégories'), opacity),
+    h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Charte de couleurs'), palette),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Couleur d’accent'), accent),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Style des cartes'), cardStyle),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Disposition des catégories'), layout),

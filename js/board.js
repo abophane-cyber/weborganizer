@@ -180,7 +180,9 @@ function categoryEl(cat, pos) {
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
   const cardCount = cat.cards.length + cat.groups.reduce((n, g) => n + g.cards.length, 0);
   return h('section', {
-    class: `category closed${cat.color ? ' tinted' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id },
+    class: `category closed${cat.color ? ' tinted' : ''}`, 'aria-label': cat.name,
+    // tone : rang de la catégorie (0 à 3), pour alterner les teintes de la charte « Nature ».
+    dataset: { id: cat.id, tone: String(Math.max(0, store.get().categories.indexOf(cat)) % 4) },
     style: cat.color ? { '--cat-color': cat.color } : null,
     // Un clic n'importe où sur le cadre ouvre la catégorie (sauf boutons et cartes,
     // visibles seulement pendant une recherche ou en édition).
