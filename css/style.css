@@ -1029,3 +1029,34 @@ body:not(.searching) .category.closed .open-toggle h2,
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
   white-space: normal; overflow: hidden;
 }
+
+/* ---- Tuiles de sous-catégories : verre dépoli ----
+   Les cartes sont des plaques pleines ; une sous-catégorie est une vitre teintée
+   (fond translucide, flou, liseré intérieur clair) : on voit tout de suite que ce
+   n'est pas une carte mais un « contenant ». --gt-c : sa teinte (couleur choisie,
+   teinte Nature ou gris par défaut). */
+body .cat-view .view-groups > .card.group-tile {
+  --gt-c: var(--nat-tone, #8a93a6);
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%),
+    color-mix(in srgb, var(--gt-c) 38%, transparent);
+  backdrop-filter: blur(14px) saturate(1.3); -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid color-mix(in srgb, var(--gt-c) 45%, rgba(255, 255, 255, 0.55));
+  color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+  --thick: 4px;
+  --edge-c: color-mix(in srgb, var(--gt-c) 35%, rgba(0, 0, 0, 0.35));
+  --bevel: inset 0 0 0 4px rgba(255, 255, 255, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.45),
+           inset 0 0 22px color-mix(in srgb, var(--gt-c) 30%, transparent);
+}
+body .cat-view .view-groups > .card.group-tile.colored { --gt-c: var(--card-bg); }
+body .cat-view .view-groups > .card.group-tile:hover {
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 100%),
+    color-mix(in srgb, var(--gt-c) 50%, transparent);
+  filter: none;
+}
+.cat-view .group-tile .avatar {
+  background: rgba(255, 255, 255, 0.14); border: 1px solid rgba(255, 255, 255, 0.35);
+  box-shadow: none;
+}
+.cat-view .group-tile .badge { background: rgba(255, 255, 255, 0.16); color: #fff; }
