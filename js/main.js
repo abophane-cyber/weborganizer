@@ -132,6 +132,20 @@ function initFullscreen() {
   sync();
 }
 
+// Chrome retire parfois l'accès au dossier (après un redémarrage). Il ne peut être
+// redonné qu'après un geste : au premier clic ou touche dans la page, on le redemande
+// (Chrome propose alors « Autoriser à chaque visite »). Une seule fois par visite.
+function autoReauthorize() {
+  if (!cloud.hasFolder() || cloud.isConnected()) return;
+  const ask = () => {
+    removeEventListener('pointerdown', ask, true);
+    removeEventListener('keydown', ask, true);
+    if (cloud.hasFolder() && !cloud.isConnected()) cloud.reauthorize().catch(e => console.warn('Accès au dossier', e));
+  };
+  addEventListener('pointerdown', ask, true);
+  addEventListener('keydown', ask, true);
+}
+
 async function start() {
   await cloud.init();
   await store.load();
@@ -147,6 +161,7 @@ async function start() {
   welcomeBanner();
 
   if (cloud.isConnected()) sync.syncNow();
+  autoReauthorize();
 
   // Resynchronise quand on revient sur l'onglet (modifications faites ailleurs).
   document.addEventListener('visibilitychange', () => {

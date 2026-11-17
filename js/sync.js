@@ -7,7 +7,7 @@ import { store, isPristine } from './store.js';
 import * as cloud from './folder.js';
 import { SAVE_DELAY } from './app-config.js';
 
-// status : saved | syncing | offline | local | reauth | error
+// status : saved | syncing | local | reauth | error
 let status = 'local';
 let detail = '';
 let meta = { dirty: false, remoteHash: null };
@@ -34,9 +34,10 @@ async function saveMeta() {
   try { await kvSet('syncMeta', meta); } catch { /* ignore */ }
 }
 
+// Le dossier pCloud Drive est sur l'ordinateur : on y écrit même sans Internet,
+// pCloud Drive enverra les fichiers dès le retour de la connexion.
 function idleStatus() {
   if (!cloud.isConfigured() || !cloud.isConnected()) return cloud.hasFolder() ? 'reauth' : 'local';
-  if (!navigator.onLine) return 'offline';
   return meta.dirty ? 'syncing' : 'saved';
 }
 
@@ -62,10 +63,13 @@ export async function init() {
     if (!e.quiet) schedule();
   });
   addEventListener('online', () => syncNow());
+  // Page fermée ou cachée juste après une modification : on enregistre tout de suite.
+  const flush = () => { if (meta.dirty && cloud.isConnected()) syncNow(); };
+  addEventListener('pagehide', flush);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') flush(); });
   // Le dossier est local : le relire toutes les minutes ne coûte presque rien, et
   // montre vite une modification faite sur un autre ordinateur.
   setInterval(() => { if (document.visibilityState === 'visible' && cloud.isConnected() && !running) syncNow(); }, 60e3);
-  addEventListener('offline', () => setStatus('offline'));
   cloud.onAuthChange(ok => (ok ? syncNow() : setStatus(cloud.hasFolder() ? 'reauth' : 'local')));
   setStatus(idleStatus());
 }
@@ -73,7 +77,6 @@ export async function init() {
 export function schedule() {
   clearTimeout(timer);
   if (!cloud.isConnected()) return setStatus(cloud.hasFolder() ? 'reauth' : 'local');
-  if (!navigator.onLine) return setStatus('offline');
   setStatus('syncing');
   timer = setTimeout(syncNow, SAVE_DELAY);
 }
@@ -87,7 +90,6 @@ export function syncNow() {
     } catch (e) {
       console.error(e);
       if (e instanceof cloud.AuthError) setStatus('reauth');
-      else if (!navigator.onLine) setStatus('offline');
       else setStatus('error', e.message);
     } finally {
       running = null;
@@ -99,7 +101,6 @@ export function syncNow() {
 
 async function doSync() {
   if (!cloud.isConfigured() || !cloud.isConnected()) return setStatus(cloud.hasFolder() ? 'reauth' : 'local');
-  if (!navigator.onLine) return setStatus('offline');
   setStatus('syncing');
 
   const files = await cloud.listRoot();

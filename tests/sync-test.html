@@ -15,11 +15,14 @@
   <div id="banner"></div>
   <nav id="dock" class="dock" hidden></nav>
   <header class="top">
+    <div id="clock" class="clock" hidden></div>
     <div class="top-text">
       <div id="logo" class="logo movable" hidden></div>
       <div id="title-block" class="title-block movable"><h1 id="title"></h1><p id="desc"></p></div>
       <div class="search"><input id="search" type="search" aria-label="Rechercher"></div>
     </div>
+    <div class="weather"><button id="weather-btn" class="weather-btn" type="button" hidden></button><div id="weather-pop" class="weather-pop" hidden></div></div>
+    <button id="fullscreen-btn" class="icon-btn fullscreen-btn" type="button" hidden></button>
     <button id="settings-btn" class="icon-btn settings-btn" type="button" aria-label="Paramètres">⚙<span class="sync-dot"></span></button>
   </header>
   <main id="board" class="board"></main>
@@ -79,6 +82,22 @@
     const z = await makeZip([{ name: 'config.json', data: '{"a":"é"}' }, { name: 'media/x.bin', data: file }]);
     const entries = await readZip(z);
     check('zip : écriture puis relecture', entries.length === 2 && new TextDecoder().decode(entries[0].data) === '{"a":"é"}' && entries[1].data.length === 1000);
+
+    // Sans Internet : le dossier est sur l'ordinateur, on y enregistre quand même.
+    const onLine = Object.getOwnPropertyDescriptor(Navigator.prototype, 'onLine');
+    Object.defineProperty(navigator, 'onLine', { configurable: true, get: () => false });
+    store.update(c => { c.title = 'Sans Internet'; });
+    await until(() => sync.getStatus().status === 'saved');
+    check('sans Internet → enregistré quand même dans le dossier', JSON.parse(await M.read('config.json')).title === 'Sans Internet');
+    delete navigator.onLine; Object.defineProperty(Navigator.prototype, 'onLine', onLine);
+
+    // Page fermée juste après une modification : enregistrement immédiat, sans attendre le délai.
+    const w0 = configWrites();
+    store.update(c => { c.title = 'Avant fermeture'; });
+    dispatchEvent(new Event('pagehide'));
+    await wait(150);
+    check('page fermée → enregistrement immédiat', configWrites() > w0 && JSON.parse(await M.read('config.json')).title === 'Avant fermeture');
+    await until(() => sync.getStatus().status === 'saved');
 
     M.denyWrites = true;
     store.update(c => { c.title = 'x'; });
