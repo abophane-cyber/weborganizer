@@ -55,10 +55,12 @@ export function normalize(cfg) {
     cat.id ||= uid();
     cat.name ??= 'Catégorie';
     cat.icon ??= '';
+    cat.collapsed = !!cat.collapsed;
     cat.groups = Array.isArray(cat.groups) ? cat.groups : [];
     for (const g of cat.groups) {
       g.id ||= uid();
       g.name ??= 'Sous-catégorie';
+      g.collapsed = !!g.collapsed;
       g.cards = Array.isArray(g.cards) ? g.cards : [];
     }
   }

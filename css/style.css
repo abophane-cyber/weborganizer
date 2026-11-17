@@ -97,6 +97,27 @@ button, input, select { font: inherit; color: inherit; }
 }
 .card:hover { background: rgba(255, 255, 255, 0.13); transform: translateY(-1px); }
 .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.link-card.colored { background: var(--card-bg); border-color: rgba(255, 255, 255, 0.14); color: #fff; }
+.link-card.colored:hover { background: var(--card-bg); filter: brightness(1.12); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+.link-card.colored .badge { background: rgba(255, 255, 255, 0.2); }
+/* Cartes Gmail */
+.gmail-card {
+  --gmail-accent: #EA4335;
+  background: #F6F8FC; color: #202124;
+  border: 1px solid #E3E6EA; border-left: 4px solid var(--gmail-accent);
+  padding-block: 8px;
+}
+.gmail-card:hover { background: #FFFFFF; box-shadow: 0 6px 18px rgba(0,0,0,.28); }
+.card-text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.25; }
+.gmail-card .card-title { font-weight: 600; }
+.card-email { font-size: .76rem; color: #5F6368; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gmail-card .badge { background: #FCE8E6; color: #C5221F; }
+.gmail-card .edit-btn { color: #202124; }
+.gmail-card .edit-btn:hover { background: rgba(0, 0, 0, 0.08); }
+.gmail-card .icon-fallback { background: var(--gmail-accent); color: #fff; }
+
+.check-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.check-row input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
 .link-blocked { opacity: .55; cursor: not-allowed; text-decoration: line-through; }
 .card-icon { width: 24px; height: 24px; flex: none; border-radius: 5px; object-fit: contain; }
 .card-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -151,6 +172,28 @@ body.editing .link-card .card-controls { position: static; order: 5; width: 100%
   justify-content: center; gap: 6px; cursor: pointer; color: var(--muted);
   border: 1px dashed rgba(255, 255, 255, 0.3); background: transparent; font-size: .88rem;
 }
+/* Repli des catégories / sous-catégories */
+.collapse-toggle {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 6px;
+  padding: 2px 4px 2px 0; border: 0; border-radius: 6px; background: none; color: inherit;
+  cursor: pointer; text-align: left;
+}
+.collapse-toggle:hover .chevron { color: var(--text); }
+.collapse-toggle h2, .collapse-toggle h3 { flex: 0 1 auto !important; }
+.chevron { display: grid; place-items: center; flex: none; color: var(--muted); transition: transform .15s ease; }
+.collapsed > .category-head .chevron, .collapsed > .group-head .chevron { transform: rotate(-90deg); }
+.collapsed-count {
+  flex: none; padding: 0 7px; border-radius: 999px; font-size: .72rem; font-weight: 600;
+  background: rgba(255, 255, 255, 0.12); color: var(--muted);
+}
+.category.collapsed > :not(.category-head) { display: none !important; }
+.category.collapsed > .category-head { margin-bottom: 0; }
+.group.collapsed > :not(.group-head) { display: none !important; }
+.group.collapsed > .group-head { margin-bottom: 0; }
+
+/* Cartes Gmail plus larges, pour lire l'adresse */
+.cards:has(.gmail-card) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+
 /* Sous-catégories */
 .group { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
 .group-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; min-height: 26px; }

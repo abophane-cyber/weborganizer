@@ -1,5 +1,5 @@
 // Affichage des catégories, sous-catégories et cartes.
-import { h, svgIcon, safeUrl } from './util.js';
+import { h, svgIcon, safeUrl, gmailInfo } from './util.js';
 import { store } from './store.js';
 import { iconEl, imageEl, faviconFor, fallbackIcon } from './icons.js';
 import { openChromeProfile, profileUrl, PROFILE_DIR_RE } from './chrome-profiles.js';
@@ -26,14 +26,36 @@ function cardControls(ctx, card, i) {
 function linkCard(ctx, card, i) {
   const url = safeUrl(card.url);
   const icon = card.icon || faviconFor(url);
+  const color = /^#[0-9a-f]{6}$/i.test(card.color || '') ? card.color : '';
+  const gmail = url ? gmailInfo(url) : null;
+  if (gmail) return gmailCard(ctx, card, i, url, gmail.email, color);
   return h('a', {
-    class: `card link-card${url ? '' : ' link-blocked'}`, href: url || null,
+    class: `card link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`, href: url || null,
+    style: color ? { '--card-bg': color } : null,
     target: url ? '_blank' : null, rel: 'noopener noreferrer',
     title: url || 'Adresse refusée (seuls les liens http, https et mailto sont autorisés)',
     'aria-disabled': url ? null : 'true',
   },
     iconEl(icon, card.title, 'card-icon'),
     h('span', { class: 'card-title' }, card.title || card.url || 'Sans titre'),
+    card.badge && h('span', { class: 'badge' }, card.badge),
+    cardControls(ctx, card, i),
+  );
+}
+
+// Style « aux couleurs de Gmail » : fond clair, liseré rouge (ou couleur choisie), nom + adresse.
+function gmailCard(ctx, card, i, url, email, color) {
+  const name = card.title || email || 'Gmail';
+  return h('a', {
+    class: 'card link-card gmail-card', href: url, target: '_blank', rel: 'noopener noreferrer',
+    title: email ? `Ouvrir la boîte ${email}` : 'Ouvrir Gmail',
+    style: color ? { '--gmail-accent': color } : null,
+  },
+    iconEl(card.icon || faviconFor(url), name, 'card-icon'),
+    h('span', { class: 'card-text' },
+      h('span', { class: 'card-title' }, name),
+      email && email !== name && h('span', { class: 'card-email' }, email),
+    ),
     card.badge && h('span', { class: 'badge' }, card.badge),
     cardControls(ctx, card, i),
   );
@@ -67,10 +89,23 @@ function cardsGrid(ctx) {
   );
 }
 
+// Bouton de repli : flèche + titre cliquables, avec le nombre de cartes quand c'est replié.
+function collapseToggle(tag, label, collapsed, count, onToggle) {
+  return h('button', {
+    type: 'button', class: 'collapse-toggle', 'aria-expanded': String(!collapsed),
+    title: collapsed ? `Déplier « ${label} »` : `Replier « ${label} »`,
+    onclick: e => { e.preventDefault(); onToggle(); },
+  },
+    h('span', { class: 'chevron', 'aria-hidden': 'true' }, svgIcon('down', 16)),
+    h(tag, {}, label),
+    collapsed && count > 0 && h('span', { class: 'collapsed-count' }, String(count)),
+  );
+}
+
 function groupEl(cat, group, gi) {
-  return h('div', { class: 'group' },
+  return h('div', { class: `group${group.collapsed ? ' collapsed' : ''}` },
     h('div', { class: 'group-head' },
-      h('h3', {}, group.name),
+      collapseToggle('h3', group.name, group.collapsed, group.cards.length, () => actions.toggleGroup(cat.id, group.id)),
       h('div', { class: 'edit-controls' },
         gi > 0 && editButton('up', 'Monter la sous-catégorie', () => actions.moveGroup(cat.id, group.id, -1)),
         gi < cat.groups.length - 1 && editButton('down', 'Descendre la sous-catégorie', () => actions.moveGroup(cat.id, group.id, 1)),
@@ -86,10 +121,11 @@ function categoryEl(cat, ci, total) {
   // Cartes directes : masquées si vides et qu'il y a des sous-catégories (sauf en mode édition).
   const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
-  return h('section', { class: 'category', 'aria-label': cat.name },
+  const cardCount = cat.cards.length + cat.groups.reduce((n, g) => n + g.cards.length, 0);
+  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}`, 'aria-label': cat.name },
     h('header', { class: 'category-head' },
       iconEl(cat.icon, cat.name, 'category-icon'),
-      h('h2', {}, cat.name),
+      collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),
       h('div', { class: 'edit-controls' },
         ci > 0 && editButton('up', 'Monter la catégorie', () => actions.moveCategory(cat.id, -1)),
         ci < total - 1 && editButton('down', 'Descendre la catégorie', () => actions.moveCategory(cat.id, 1)),

@@ -1,5 +1,5 @@
 // Actions d'édition : catégories, sous-catégories et cartes.
-import { h, uid, safeUrl } from './util.js';
+import { h, uid, safeUrl, gmailInfo, EMAIL_RE } from './util.js';
 import { store, findCategory, findGroup, findHolder, findCard, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
 import { openModal, field, imageField } from './modal.js';
 import { PROFILE_DIR_RE } from './chrome-profiles.js';
@@ -40,6 +40,12 @@ export function deleteCategory(id) {
   const detail = [g && `${g} sous-catégorie(s)`, n && `${n} carte(s)`].filter(Boolean).join(' et ');
   if (!confirm(`Supprimer la catégorie « ${cat.name} »${detail ? ` avec ${detail}` : ''} ?`)) return;
   store.update(c => { c.categories = c.categories.filter(x => x.id !== id); });
+}
+export function toggleCategory(id) {
+  store.update(() => { const cat = findCategory(id); cat.collapsed = !cat.collapsed; });
+}
+export function toggleGroup(catId, groupId) {
+  store.update(() => { const g = findGroup(catId, groupId); g.collapsed = !g.collapsed; });
 }
 export function moveCategory(id, dir) {
   store.update(c => move(c.categories, c.categories.findIndex(x => x.id === id), dir));
@@ -89,18 +95,10 @@ export function moveGroup(catId, groupId, dir) {
 // ---- Cartes ----
 
 // Boîtes Gmail : "adresse@gmail.com" -> lien qui ouvre ce compte précis.
-const EMAIL_RE = /^[^\s@/:?#]+@[^\s@/:?#]+\.[a-z]{2,}$/i;
 function gmailUrl(email) {
   return `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(email.trim().toLowerCase())}`;
 }
-function gmailAddressFrom(link) {
-  try {
-    const u = new URL(link);
-    if (u.hostname !== 'mail.google.com') return '';
-    const who = u.searchParams.get('authuser') || '';
-    return EMAIL_RE.test(who) ? who : '';
-  } catch { return ''; }
-}
+const gmailAddressFrom = link => gmailInfo(link)?.email || '';
 
 // Couleur : palette + code hexadécimal saisi au clavier, synchronisés.
 const HEX_RE = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -161,9 +159,20 @@ function cardForm(card, location, onSave) {
   const icon = imageField('Icône', card.icon, { help: 'Vide : icône du site (favicon).' });
   const photo = imageField('Photo (dans le cercle)', card.photo, { help: 'Vide : initiale du nom.' });
 
+  // Couleur facultative des cartes de lien (case à cocher + palette/code).
+  const linkColor = colorInput(card.type !== 'chrome' && card.color ? card.color : '#3A4A6B');
+  const useLinkColor = h('input', { type: 'checkbox', checked: card.type !== 'chrome' && !!card.color });
+  const linkColorRow = h('div', { class: 'field' },
+    h('label', { class: 'check-row' }, useLinkColor, h('span', { class: 'field-label' }, 'Couleur personnalisée')),
+    linkColor.el,
+    h('span', { class: 'field-help' }, 'Fond coloré et texte blanc. Pour une carte Gmail : couleur du liseré à gauche. Décoché : style habituel.'));
+  const syncLinkColor = () => { linkColor.el.hidden = !useLinkColor.checked; };
+  useLinkColor.addEventListener('change', syncLinkColor);
+  syncLinkColor();
+
   const linkFields = h('div', { class: 'field-group' },
     field('Adresse (URL)', url, 'Pour une boîte Gmail, tapez simplement l’adresse e-mail (ex. prenom.nom@gmail.com).'),
-    icon.el);
+    icon.el, linkColorRow);
   // Si c'est un lien Gmail déjà construit, on réaffiche l'adresse e-mail pour la modification.
   const existingEmail = gmailAddressFrom(card.url);
   if (existingEmail) url.value = existingEmail;
@@ -201,15 +210,17 @@ function cardForm(card, location, onSave) {
       } else {
         let u = url.value.trim();
         if (!u) return 'L’adresse est obligatoire.';
+        if (useLinkColor.checked && !linkColor.valid) return 'Code couleur invalide : utilisez le format #RRGGBB (ex. #6B3A4A).';
+        const extra = { icon: icon.value, badge: badge.value.trim(), ...(useLinkColor.checked ? { color: linkColor.value } : {}) };
         if (EMAIL_RE.test(u)) {
           // Adresse e-mail : lien vers cette boîte Gmail précise.
-          onSave({ type: 'link', title: t || u, url: gmailUrl(u), icon: icon.value, badge: badge.value.trim() }, catId, groupId);
+          onSave({ type: 'link', title: t || u, url: gmailUrl(u), ...extra }, catId, groupId);
           return;
         }
         if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
         const safe = safeUrl(u);
         if (!safe) return 'Adresse refusée : seuls les liens http://, https:// et mailto: sont acceptés.';
-        onSave({ type: 'link', title: t || new URL(safe).hostname || safe, url: safe, icon: icon.value, badge: badge.value.trim() }, catId, groupId);
+        onSave({ type: 'link', title: t || new URL(safe).hostname || safe, url: safe, ...extra }, catId, groupId);
       }
     },
   });

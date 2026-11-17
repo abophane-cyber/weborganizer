@@ -38,6 +38,17 @@ export function safeUrl(value) {
   }
 }
 
+// Lien Gmail ? Renvoie { email } (email vide si le lien ne vise pas un compte précis), sinon null.
+export const EMAIL_RE = /^[^\s@/:?#]+@[^\s@/:?#]+\.[a-z]{2,}$/i;
+export function gmailInfo(link) {
+  try {
+    const u = new URL(link);
+    if (u.hostname !== 'mail.google.com') return null;
+    const who = u.searchParams.get('authuser') || '';
+    return { email: EMAIL_RE.test(who) ? who : '' };
+  } catch { return null; }
+}
+
 export function uid() {
   const a = new Uint8Array(6);
   crypto.getRandomValues(a);
