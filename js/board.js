@@ -123,7 +123,6 @@ function bareEl(cat, pos) {
   const card = cat.cards[0];
   return h('section', {
     class: 'category bare', 'aria-label': card?.title || 'Carte', dataset: { id: cat.id },
-    style: { '--cat-w': '140px' },
   },
     h('header', { class: 'category-head' },
       h('div', { class: 'edit-controls' },
