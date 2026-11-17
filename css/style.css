@@ -199,6 +199,10 @@ body.editing .category.bare .edit-controls { padding: 2px; border-radius: 8px; b
 .category.bare .cards { grid-template-columns: 1fr; }
 .category.bare .add-card { display: none !important; }
 
+/* Version de la page mise de côté */
+.aside-box { display: grid; gap: 8px; padding: 10px 12px; border-radius: 10px; border: 1px solid var(--warn); background: rgba(243, 194, 91, 0.1); }
+.aside-box p { margin: 0; }
+
 /* Boutons d'ajout en haut du panneau Paramètres */
 .add-row { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
 

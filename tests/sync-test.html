@@ -42,16 +42,19 @@
     const M = window.__mock;
     const root = () => M.findFolder('0', 'WebOrganizer');
 
-    check('1er lancement : config.json créé dans /WebOrganizer', await until(() => root() && M.findFile(root(), 'config.json')));
     check('statut « Enregistré »', await until(() => sync.getStatus().status === 'saved'));
+    check('1er lancement : la page de départ intacte n’est pas envoyée', await until(() => root()) && !M.findFile(root(), 'config.json'));
 
     store.update(c => { c.title = 'Titre test'; });
     check('statut « Synchronisation… » juste après une modification', sync.getStatus().status === 'syncing');
-    await until(() => sync.getStatus().status === 'saved');
+    await until(() => sync.getStatus().status === 'saved' && M.findFile(root(), 'config.json'));
     const cfgId = M.findFile(root(), 'config.json');
     const remote = JSON.parse(await M.files[cfgId].data.text());
-    check('modification envoyée sur pCloud', remote.title === 'Titre test');
-    check('config.backup.json copié avant écriture', !!M.findFile(root(), 'config.backup.json'));
+    check('modification envoyée sur pCloud (config.json créé)', remote.title === 'Titre test');
+    store.update(c => { c.description = 'Deuxième envoi'; });
+    await until(() => !!M.findFile(root(), 'config.backup.json'));
+    check('config.backup.json copié avant l’écriture suivante', !!M.findFile(root(), 'config.backup.json'));
+    await until(() => sync.getStatus().status === 'saved');
 
     const before = M.calls.filter(c => c === 'uploadfile').length;
     for (let i = 0; i < 5; i++) { store.update(c => { c.description = 'd' + i; }); await wait(30); }

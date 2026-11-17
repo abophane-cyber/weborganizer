@@ -3,7 +3,7 @@
 // - Si config.json a changé sur pCloud depuis la dernière synchro (autre ordinateur),
 //   la version la plus récente (champ updatedAt) l'emporte.
 import { kvGet, kvSet, mediaGet, mediaPut, mediaDelete, mediaKeys } from './db.js';
-import { store } from './store.js';
+import { store, isPristine } from './store.js';
 import * as cloud from './pcloud.js';
 import { SAVE_DELAY } from './app-config.js';
 
@@ -92,11 +92,14 @@ async function doSync() {
     const local = store.get();
     const remoteNewer = (remoteCfg.updatedAt || '') >= (local.updatedAt || '');
     // Première synchro de ce navigateur / profil Chrome (jamais relié à pCloud) :
-    // la version pCloud l'emporte toujours, pour ne pas écraser la vraie page avec
-    // une page de départ ou de test. La version locale est gardée de côté.
+    // la version pCloud l'emporte, pour ne pas écraser la vraie page avec une page
+    // de test. Exception : si pCloud ne contient que la page de départ intacte,
+    // c'est la page locale (la vraie) qui l'emporte.
     const firstSync = meta.remoteHash == null;
-    if (!meta.dirty || remoteNewer || firstSync) {
-      if (meta.dirty) await kvSet('configAvantConflit', local).catch(() => {});
+    const remoteIsStarter = isPristine(remoteCfg) && !isPristine(local);
+    if (!remoteIsStarter && (!meta.dirty || remoteNewer || firstSync)) {
+      // Toute page locale réelle remplacée est mise de côté (bouton « Restaurer »).
+      if (!isPristine(local)) await setAside(local);
       store.replace(remoteCfg);
       meta = { dirty: false, remoteHash };
       await saveMeta();
@@ -104,14 +107,15 @@ async function doSync() {
       return setStatus('saved');
     }
     // Sinon : la version locale est plus récente, elle sera envoyée ci-dessous.
+    if (remoteIsStarter) meta.dirty = true;
   }
 
   // 2. Envoi des médias pas encore sur pCloud, puis nettoyage.
   await uploadPendingMedia();
   await collectUnusedMedia();
 
-  // 3. Envoi de la config.
-  if (meta.dirty || !remote) {
+  // 3. Envoi de la config (jamais la page de départ intacte).
+  if ((meta.dirty || !remote) && !isPristine(store.get())) {
     const snapshot = store.get();
     const stamp = snapshot.updatedAt;
     const saved = await cloud.writeConfig(snapshot, remote);
@@ -123,6 +127,28 @@ async function doSync() {
   await downloadMissingMedia();
   setStatus(meta.dirty ? 'syncing' : 'saved');
   if (meta.dirty) schedule();
+}
+
+// ---- Version mise de côté (remplacée par celle de pCloud) ----
+const ASIDE_KEY = 'configAvantConflit';
+async function setAside(cfg) {
+  try { await kvSet(ASIDE_KEY, { ...cfg, asideAt: new Date().toISOString() }); } catch { /* ignore */ }
+}
+export async function getAside() {
+  try { return (await kvGet(ASIDE_KEY)) || null; } catch { return null; }
+}
+export async function restoreAside() {
+  const aside = await getAside();
+  if (!aside) return false;
+  const current = store.get();
+  delete aside.asideAt;
+  store.replace(aside, { local: true }); // devient la version la plus récente -> envoyée à pCloud
+  // On garde l'autre version au cas où (sans la proposer à nouveau).
+  try { await kvSet('configRemplacee', current); await kvSet(ASIDE_KEY, null); } catch { /* ignore */ }
+  return true;
+}
+export async function dismissAside() {
+  try { await kvSet(ASIDE_KEY, null); } catch { /* ignore */ }
 }
 
 async function uploadPendingMedia() {

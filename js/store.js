@@ -155,6 +155,10 @@ export function columnLayout(cfg) {
   return { nCols, byColumn };
 }
 
+// Page de départ jamais modifiée (date 1970) : elle ne doit ni être envoyée dans
+// pCloud, ni remplacer une vraie page.
+export const isPristine = cfg => !cfg || !cfg.updatedAt || cfg.updatedAt === EPOCH;
+
 export function findCategory(id) { return config.categories.find(c => c.id === id); }
 export function findGroup(catId, groupId) { return findCategory(catId)?.groups.find(g => g.id === groupId); }
 // Conteneur de cartes : la catégorie elle-même (groupId vide) ou une de ses sous-catégories.

@@ -106,8 +106,46 @@ function syncSection() {
     },
   }, 'Exporter (.zip)');
 
+  // Version de la page mise de côté (remplacée par celle de pCloud) : la proposer.
+  const asideBox = h('div', { class: 'aside-box', hidden: true });
+  const refreshAside = async () => {
+    const a = await sync.getAside();
+    if (!a) { asideBox.hidden = true; return; }
+    const n = (a.categories || []).length;
+    const when = a.asideAt ? new Date(a.asideAt).toLocaleString('fr-FR') : '';
+    asideBox.replaceChildren(
+      h('p', { class: 'small' }, h('strong', {}, 'Une autre version de votre page a été mise de côté'),
+        ` — « ${a.title || 'sans titre'} », ${n} catégorie(s)${when ? `, le ${when}` : ''}. `,
+        'Elle a été remplacée par la version de pCloud.'),
+      h('div', { class: 'row wrap' },
+        h('button', {
+          type: 'button', class: 'btn primary',
+          onclick: async () => {
+            if (!confirm('Restaurer cette version ? Elle remplacera la page actuelle, ici et dans pCloud.')) return;
+            await sync.restoreAside();
+            toast('Votre page a été restaurée. Elle est envoyée dans pCloud.', { kind: 'ok' });
+            fillInputs();
+            refreshAside();
+          },
+        }, 'Restaurer cette version'),
+        h('button', {
+          type: 'button', class: 'btn link-btn',
+          onclick: async () => {
+            if (!confirm('Oublier définitivement cette version mise de côté ?')) return;
+            await sync.dismissAside();
+            refreshAside();
+          },
+        }, 'Ignorer'),
+      ),
+    );
+    asideBox.hidden = false;
+  };
+  refreshAside();
+  store.subscribe(e => { if (e.remote) refreshAside(); });
+
   return section('Synchronisation',
     h('div', { class: 'row' }, chip),
+    asideBox,
     account,
     progress,
     h('div', { class: 'row wrap' }, actionBtn, syncBtn),
