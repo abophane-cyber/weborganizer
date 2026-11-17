@@ -63,6 +63,16 @@
       await kvSet('config', realPage('Ma page locale'));
       await kvSet('syncMeta', { dirty: true, remoteHash: null });
       await mediaPut('mvid', new Blob(['abc'], { type: 'video/mp4' }));
+    } else if (scenario === 'D' || scenario === 'E') {
+      // Comme le vrai pCloud : lien direct bloqué, gettextfile en erreur.
+      // Navigateur resté bloqué : page de départ et « remoteHash » déjà à jour (ancien défaut).
+      M.blockContent = true;
+      M.textfileError = true;
+      if (scenario === 'E') M.fileopsFail = true;
+      const real = realPage('Page de pCloud'); real.media = {}; real.background = { src: '', kind: 'image', overlay: 0.3 };
+      M.putFile(rootId, 'config.json', new Blob([JSON.stringify(real)]));
+      const remoteId = M.findFile(rootId, 'config.json');
+      await kvSet('syncMeta', { dirty: false, remoteHash: String(M.files[remoteId].hash) });
     } else {
       // pCloud vide, navigateur neuf (page de départ).
     }
@@ -93,6 +103,16 @@
       check('… et elle est envoyée dans pCloud', (await remoteConfig())?.title === 'Ma page locale');
       check('… avec sa vidéo (fichier local conservé)', Object.values(M.files).some(f => f.name.endsWith('cafe.mp4')));
       check('le bouton « Restaurer » disparaît', document.querySelector('.aside-box').hidden);
+    } else if (scenario === 'D') {
+      check('la page de pCloud est récupérée (nouveau téléchargement forcé)', store.get().title === 'Page de pCloud');
+      check('… par file_open / file_pread', M.ways.includes('fileops'));
+      check('statut « Enregistré »', sync.getStatus().status === 'saved');
+    } else if (scenario === 'E') {
+      await until(() => sync.getStatus().status === 'error', 5000);
+      const st = sync.getStatus();
+      check('statut « Erreur de synchronisation »', st.status === 'error');
+      check('l\u2019erreur indique les 3 voies essayées', /lien direct/.test(st.detail) && /gettextfile/.test(st.detail) && /file_open/.test(st.detail));
+      check('la page locale n\u2019est PAS remplacée par une erreur', store.get().title === 'WebOrganizer' && store.get().categories.length === 2);
     } else {
       check('statut « Enregistré »', sync.getStatus().status === 'saved');
       check('la page de départ n’est PAS envoyée dans pCloud', !(await remoteConfig()));

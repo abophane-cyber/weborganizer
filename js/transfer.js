@@ -11,7 +11,7 @@ export async function exportZip() {
   for (const [id, info] of Object.entries(cfg.media)) {
     let blob = await mediaGet(id).catch(() => null);
     if (!blob && info.remoteId && cloud.isConnected()) {
-      blob = await cloud.downloadMedia(info.remoteId).catch(() => null);
+      blob = await cloud.downloadMedia(info.remoteId, info.size).catch(() => null);
     }
     if (blob) files.push({ name: `media/${id}__${(info.name || 'fichier').replace(/[\\/:*?"<>|]/g, '_')}`, data: blob });
     else missing.push(info.name);

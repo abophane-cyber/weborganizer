@@ -116,29 +116,107 @@ export async function listRoot() {
   return map;
 }
 
-async function downloadBlob(fileid) {
-  const link = await call('getfilelink', { fileid, forcedownload: 1 });
-  const res = await fetch(`https://${link.hosts[0]}${link.path}`);
-  if (!res.ok) throw new Error(`Téléchargement pCloud : HTTP ${res.status}`);
-  return res.blob();
+// ---- Téléchargement ----
+// Les serveurs de fichiers de pCloud n'autorisent pas les pages web (pas de CORS) :
+// le lien direct échoue en général. On essaie trois voies et on retient celle qui
+// fonctionne : lien direct, gettextfile (API), puis file_open / file_pread (API).
+// Une réponse d'erreur pCloud n'est JAMAIS prise pour le contenu du fichier.
+
+function apiUrl(method, params) {
+  const url = new URL(`https://${auth.host}/${method}`);
+  url.searchParams.set('access_token', auth.token);
+  for (const [k, v] of Object.entries(params)) if (v != null) url.searchParams.set(k, v);
+  return url;
 }
 
-export async function downloadJson(fileid) {
-  try {
-    const blob = await downloadBlob(fileid);
-    return JSON.parse(await blob.text());
-  } catch (e) {
-    // Plan B : lecture directe par l'API (fichiers texte).
-    const url = new URL(`https://${auth.host}/gettextfile`);
-    url.searchParams.set('access_token', auth.token);
-    url.searchParams.set('fileid', fileid);
-    const res = await fetch(url);
-    if (!res.ok) throw e;
-    return JSON.parse(await res.text());
+// Réponse JSON d'erreur de pCloud : { result: <code ≠ 0>, error: "…" }
+function pcloudError(obj) {
+  return obj && typeof obj === 'object' && typeof obj.result === 'number' && obj.result !== 0 && 'error' in obj;
+}
+async function throwIfApiError(res, method) {
+  const type = res.headers.get('content-type') || '';
+  if (!type.includes('json')) return;
+  const j = await res.clone().json().catch(() => null);
+  if (pcloudError(j)) {
+    if ([1000, 2000, 2094, 2095].includes(j.result)) { writeAuth(null); throw new AuthError(j.error); }
+    throw new Error(`${method} : ${j.error} (${j.result})`);
   }
 }
 
-export const downloadMedia = fileid => downloadBlob(fileid);
+async function viaLink(fileid) {
+  const link = await call('getfilelink', { fileid, forcedownload: 1 });
+  const res = await fetch(`https://${link.hosts[0]}${link.path}`);
+  if (!res.ok) throw new Error(`lien direct : HTTP ${res.status}`);
+  return res.blob();
+}
+
+async function viaTextFile(fileid) {
+  const res = await fetch(apiUrl('gettextfile', { fileid }));
+  if (!res.ok) throw new Error(`gettextfile : HTTP ${res.status}`);
+  await throwIfApiError(res, 'gettextfile');
+  return res.blob();
+}
+
+async function viaFileOps(fileid, size) {
+  const opened = await call('file_open', { fileid, flags: 0 }); // lecture seule
+  const fd = opened.fd;
+  try {
+    let total = Number(size);
+    if (!Number.isFinite(total)) total = (await call('file_size', { fd })).size;
+    const parts = [];
+    let offset = 0;
+    while (offset < total) {
+      const count = Math.min(4 * 1024 * 1024, total - offset);
+      const res = await fetch(apiUrl('file_pread', { fd, count, offset }));
+      if (!res.ok) throw new Error(`file_pread : HTTP ${res.status}`);
+      await throwIfApiError(res, 'file_pread');
+      const buf = await res.arrayBuffer();
+      if (!buf.byteLength) break;
+      parts.push(buf);
+      offset += buf.byteLength;
+    }
+    if (offset < total) throw new Error(`file_pread : fichier incomplet (${offset}/${total} octets)`);
+    return new Blob(parts);
+  } finally {
+    call('file_close', { fd }).catch(() => {});
+  }
+}
+
+const WAYS = { link: viaLink, text: viaTextFile, fileops: viaFileOps };
+const WAY_LABELS = { link: 'lien direct', text: 'gettextfile', fileops: 'file_open/file_pread' };
+let preferredWay = null;
+try { preferredWay = localStorage.getItem('wo.pcloud.way'); } catch { /* ignore */ }
+
+async function downloadBlob(fileid, size) {
+  const order = ['link', 'text', 'fileops'];
+  if (preferredWay && WAYS[preferredWay]) order.sort((a, b) => (a === preferredWay ? -1 : b === preferredWay ? 1 : 0));
+  const errors = [];
+  for (const way of order) {
+    try {
+      const blob = await WAYS[way](fileid, size);
+      if (way !== preferredWay) {
+        preferredWay = way;
+        try { localStorage.setItem('wo.pcloud.way', way); } catch { /* ignore */ }
+      }
+      return blob;
+    } catch (e) {
+      if (e instanceof AuthError) throw e;
+      errors.push(`${WAY_LABELS[way]} : ${e.message || e}`);
+    }
+  }
+  throw new Error(`Téléchargement depuis pCloud impossible (${errors.join(' ; ')})`);
+}
+
+export async function downloadJson(fileid, size) {
+  const blob = await downloadBlob(fileid, size);
+  let cfg;
+  try { cfg = JSON.parse(await blob.text()); } catch { throw new Error('config.json illisible'); }
+  if (pcloudError(cfg)) throw new Error(`pCloud : ${cfg.error} (${cfg.result})`);
+  if (!cfg || typeof cfg !== 'object' || !Array.isArray(cfg.categories)) throw new Error('config.json invalide (pas une page WebOrganizer)');
+  return cfg;
+}
+
+export const downloadMedia = (fileid, size) => downloadBlob(fileid, size);
 
 // Envoi d'un fichier (remplace un fichier du même nom ; pCloud garde l'ancien en révision).
 // Les requêtes multipart/form-data passent en CORS sans pré-vérification.

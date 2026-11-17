@@ -42,6 +42,9 @@ function idleStatus() {
 
 export async function init() {
   try { meta = { ...meta, ...(await kvGet('syncMeta')) }; } catch { /* ignore */ }
+  // Version 2 : un défaut pouvait faire prendre une erreur pCloud pour une page vide,
+  // puis croire la page à jour. On force un nouveau téléchargement, une seule fois.
+  if (!meta.v2) { meta = { ...meta, remoteHash: null, v2: true }; await saveMeta(); }
   store.subscribe(e => {
     if (e.type !== 'change' || !e.local) return;
     meta.dirty = true;
@@ -94,7 +97,7 @@ async function doSync() {
 
   // 1. Version distante modifiée ailleurs ?
   if (remote && remoteHash !== meta.remoteHash) {
-    const remoteCfg = await cloud.downloadJson(remote.fileid);
+    const remoteCfg = await cloud.downloadJson(remote.fileid, remote.size);
     const local = store.get();
     const remoteNewer = (remoteCfg.updatedAt || '') >= (local.updatedAt || '');
     // Première synchro de ce navigateur / profil Chrome (jamais relié à pCloud) :
@@ -105,9 +108,9 @@ async function doSync() {
     const remoteIsStarter = isPristine(remoteCfg) && !isPristine(local);
     if (!remoteIsStarter && (!meta.dirty || remoteNewer || firstSync)) {
       // Toute page locale réelle remplacée est mise de côté (bouton « Restaurer »).
-      if (!isPristine(local)) await setAside(local);
+      if (!isPristine(local) && local.updatedAt !== remoteCfg.updatedAt) await setAside(local);
       store.replace(remoteCfg);
-      meta = { dirty: false, remoteHash };
+      meta = { dirty: false, remoteHash, v2: true };
       await saveMeta();
       await downloadMissingMedia();
       info.lastSyncAt = new Date().toISOString();
@@ -204,7 +207,7 @@ async function downloadMissingMedia() {
     if (local.has(id) || !info.remoteId) continue;
     try {
       emitProgress({ id, name: info.name, ratio: 0, download: true });
-      const blob = await cloud.downloadMedia(info.remoteId);
+      const blob = await cloud.downloadMedia(info.remoteId, info.size);
       await mediaPut(id, blob);
       emitProgress({ id, name: info.name, ratio: 1, done: true, download: true });
       got = true;

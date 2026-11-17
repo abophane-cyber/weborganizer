@@ -42,7 +42,7 @@ export function resolve(ref) {
       const info = store.get().media[id];
       if (info?.remoteId && cloud.isConnected() && navigator.onLine) {
         try {
-          blob = await cloud.downloadMedia(info.remoteId);
+          blob = await cloud.downloadMedia(info.remoteId, info.size);
           await mediaPut(id, blob);
         } catch (e) { console.warn('Média non téléchargé', id, e); }
       }

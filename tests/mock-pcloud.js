@@ -22,11 +22,20 @@
   state.findFile = findFile;
   state.findFolder = findFolder;
   state.authFail = false;
+  // Pour imiter le vrai pCloud : lien direct bloqué (CORS) / gettextfile en erreur / fileops en panne.
+  state.blockContent = false;
+  state.textfileError = false;
+  state.fileopsFail = false;
+  state.fds = {};
+  state.nextFd = 1;
+  state.ways = [];
 
   const realFetch = window.fetch.bind(window);
   window.fetch = async (input, init) => {
     const url = new URL(typeof input === 'string' ? input : input.url || String(input));
     if (url.hostname === 'mock.content') {
+      if (state.blockContent) throw new TypeError('Failed to fetch');
+      state.ways.push('link');
       const f = state.files[url.pathname.split('/')[2]];
       return f ? new Response(f.data) : new Response('nope', { status: 404 });
     }
@@ -49,7 +58,23 @@
         return ok({ metadata: { folderid: Number(p.folderid), contents } });
       }
       case 'getfilelink': return ok({ hosts: ['mock.content'], path: `/f/${p.fileid}/file` });
-      case 'gettextfile': return new Response(state.files[p.fileid].data);
+      case 'gettextfile':
+        if (state.textfileError) return new Response(JSON.stringify({ result: 2003, error: 'Access denied.' }), { headers: { 'content-type': 'application/json' } });
+        state.ways.push('text');
+        return new Response(state.files[p.fileid].data);
+      case 'file_open': {
+        if (state.fileopsFail) return new Response(JSON.stringify({ result: 2003, error: 'Access denied.' }), { headers: { 'content-type': 'application/json' } });
+        const fd = state.nextFd++; state.fds[fd] = p.fileid; return ok({ fd, fileid: Number(p.fileid) });
+      }
+      case 'file_size': return ok({ size: state.files[state.fds[p.fd]].data.size, offset: 0 });
+      case 'file_pread': {
+        const f = state.files[state.fds[p.fd]];
+        if (!f) return new Response(JSON.stringify({ result: 1007, error: 'Invalid or closed file descriptor.' }), { headers: { 'content-type': 'application/json' } });
+        state.ways.push('fileops');
+        const start = Number(p.offset), end = start + Number(p.count);
+        return new Response(f.data.slice(start, end), { headers: { 'content-type': 'application/octet-stream' } });
+      }
+      case 'file_close': delete state.fds[p.fd]; return ok({});
       case 'copyfile': {
         const src = state.files[p.fileid];
         const id = putFile(String(p.tofolderid), p.toname, src.data);
