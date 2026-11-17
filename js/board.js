@@ -121,6 +121,16 @@ function goBack(view) {
 
 addEventListener('popstate', () => { renderBoard(boardRoot()); scrollTo(0, 0); });
 
+// Touche Échap sur l'écran d'une catégorie : comme le bouton Retour
+// (sauf dans un champ de saisie, une fenêtre ouverte ou les Paramètres).
+addEventListener('keydown', e => {
+  if (e.key !== 'Escape' || e.defaultPrevented || !document.body.classList.contains('viewing')) return;
+  if (document.body.classList.contains('editing') || document.querySelector('.modal, dialog[open]')) return;
+  if (e.target.closest?.('input, textarea, select, [contenteditable]')) return;
+  const back = document.querySelector('.view-back');
+  if (back) { e.preventDefault(); back.click(); }
+});
+
 // Titre cliquable d'une catégorie (ou sous-catégorie) sur la page : ouvre son écran.
 function openButton(tag, label, count, onOpen) {
   return h('button', {
@@ -239,7 +249,7 @@ function viewEl(view) {
   const { cat, group } = view;
   const color = group ? group.color : cat.color;
   const head = h('header', { class: 'view-head' },
-    h('button', { type: 'button', class: 'view-back', onclick: () => goBack(view) }, svgIcon('left', 16), 'Retour'),
+    h('button', { type: 'button', class: 'view-back', title: 'Retour (touche Échap)', onclick: () => goBack(view) }, svgIcon('left', 22), 'Retour'),
     h('h2', { class: 'view-title' },
       group ? h('span', { class: 'view-icon', 'aria-hidden': 'true' }, glyph('folder', 20)) : iconEl(cat.icon, cat.name, 'category-icon'),
       h('span', {}, group ? group.name : cat.name),
