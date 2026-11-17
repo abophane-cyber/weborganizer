@@ -91,7 +91,11 @@ async function doSync() {
     const remoteCfg = await cloud.downloadJson(remote.fileid);
     const local = store.get();
     const remoteNewer = (remoteCfg.updatedAt || '') >= (local.updatedAt || '');
-    if (!meta.dirty || remoteNewer) {
+    // Première synchro de ce navigateur / profil Chrome (jamais relié à pCloud) :
+    // la version pCloud l'emporte toujours, pour ne pas écraser la vraie page avec
+    // une page de départ ou de test. La version locale est gardée de côté.
+    const firstSync = meta.remoteHash == null;
+    if (!meta.dirty || remoteNewer || firstSync) {
       if (meta.dirty) await kvSet('configAvantConflit', local).catch(() => {});
       store.replace(remoteCfg);
       meta = { dirty: false, remoteHash };
