@@ -384,8 +384,17 @@ body:not(.searching) .category.closed {
 }
 body:not(.searching) .category.closed:hover { filter: brightness(1.12); }
 body:not(.searching) .category.closed > .category-head { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
-.category.closed .category-head .category-icon.icon-glyph { width: 32px; height: 32px; }
-.category.closed .category-head h2 { font-size: 1.15rem; }
+/* Même taille et même disposition qu'une carte seule : moitié de la largeur,
+   icône ronde au-dessus du nom, centrés. (Pendant une recherche : pleine largeur.) */
+body:not(.searching) .category.closed { width: calc((100% - 18px) / 2); padding: 14px 12px; }
+body:not(.searching) .board-canvas > .category.closed { --cat-w: calc((min(100%, 380px) - 18px) / 2); }
+body:not(.searching) .category.closed > .category-head { flex-direction: column; gap: 10px; text-align: center; }
+body:not(.searching) .category.closed .category-head > .category-icon { width: 52px; height: 52px; }
+body:not(.searching) .category.closed .category-head > .category-icon.icon-glyph svg { width: 28px; height: 28px; }
+body:not(.searching) .category.closed .open-toggle { flex: none; flex-direction: column; gap: 6px; padding: 0; text-align: center; }
+body:not(.searching) .category.closed .open-toggle h2 { font-size: 1rem; white-space: normal; overflow-wrap: anywhere; }
+/* En édition : les boutons en haut, sur une ou deux lignes */
+body.editing:not(.searching) .category.closed .edit-controls { order: -1; flex-wrap: wrap; justify-content: center; }
 .open-toggle { padding-left: 0; }
 
 /* ---- Écran d'une catégorie / sous-catégorie (bouton Retour) ---- */
@@ -412,7 +421,9 @@ body.viewing .top-text { display: none; }
 .view-title .category-icon.icon-glyph { width: 34px; height: 34px; }
 .view-icon { display: grid; place-items: center; color: var(--muted); }
 .view-controls { justify-self: end; }
-.cat-view .cards { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 18px; }
+/* Tuiles de largeur fixe, centrées sur l'écran (auto-fit : pas de colonnes vides) */
+.cat-view .cards { grid-template-columns: repeat(auto-fit, 210px); justify-content: center; gap: 18px; }
+.cat-view .add-group { margin-left: auto; margin-right: auto; }
 .cat-view .tile { min-height: 150px; }
 .cat-view .view-groups { margin-top: 18px; }
 .cat-view .edit-only-grid + .view-groups { margin-top: 0; }
