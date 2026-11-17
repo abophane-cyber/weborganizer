@@ -401,7 +401,8 @@ body:not(.searching) .category.closed:hover { filter: brightness(1.12); }
 body:not(.searching) .category.closed > .category-head { margin-bottom: 0; padding-bottom: 0; border-bottom: 0; }
 /* Même taille et même disposition qu'une carte seule : moitié de la largeur,
    icône ronde au-dessus du nom, centrés. (Pendant une recherche : pleine largeur.) */
-body:not(.searching) .category.closed { width: calc((100% - 18px) / 2); padding: 14px 12px; }
+body:not(.searching) .category.closed { padding: 14px 12px; }
+body:not(.searching) .board-col > .category.closed { width: calc((100% - 18px) / 2); }
 body:not(.searching) .board-canvas > .category.closed { --cat-w: calc((min(100%, 380px) - 18px) / 2); }
 body:not(.searching) .category.closed > .category-head { flex-direction: column; gap: 10px; text-align: center; }
 body:not(.searching) .category.closed .category-head > .category-icon { width: 52px; height: 52px; }
@@ -414,7 +415,9 @@ body.editing:not(.searching) .category.closed .edit-controls { order: -1; flex-w
 
 /* ---- Écran d'une catégorie / sous-catégorie (bouton Retour) ---- */
 body.viewing .top-text { display: none; }
-.cat-view { width: 100%; }
+/* L'écran occupe toute la hauteur ; les tuiles sont centrées verticalement sous le titre */
+.cat-view { width: 100%; flex: 1; display: flex; flex-direction: column; }
+.view-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: 6vh; }
 .view-head {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   margin: 0 0 22px;

@@ -269,8 +269,11 @@ function viewEl(view) {
     style: color ? { '--cat-color': color } : null,
   },
     head,
-    body,
-    empty && h('p', { class: 'view-empty' }, 'Aucune carte pour l’instant. Ouvrez les Paramètres pour en ajouter.'),
+    // Le contenu est centré dans la hauteur restante de l'écran.
+    h('div', { class: 'view-body' },
+      body,
+      empty && h('p', { class: 'view-empty' }, 'Aucune carte pour l’instant. Ouvrez les Paramètres pour en ajouter.'),
+    ),
   );
 }
 
