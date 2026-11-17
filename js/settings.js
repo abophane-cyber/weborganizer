@@ -261,8 +261,6 @@ function updateBgInfo() {
   if (isMediaRef(bg.src)) {
     const m = mediaInfo(bg.src);
     bgInfo.textContent = `Fond actuel : ${m?.name || 'fichier'} (${m?.mime?.startsWith('video/') ? 'vidéo' : 'image'}, ${formatBytes(m?.size)})${m && !m.remoteId ? ' — pas encore sur pCloud' : ''}`;
-  } else {
-    bgInfo.textContent = `Fond actuel : ${bg.kind === 'video' ? 'vidéo' : 'image'} en ligne.`;
   }
 }
 
@@ -295,21 +293,6 @@ function designSection() {
     setBackgroundFile(e.dataTransfer.files[0]);
   });
 
-  const url = h('input', { type: 'url', placeholder: 'https://… (image ou vidéo .mp4/.webm)' });
-  const kind = h('select', {},
-    h('option', { value: 'auto' }, 'Type : auto'),
-    h('option', { value: 'image' }, 'Image'),
-    h('option', { value: 'video' }, 'Vidéo'));
-  const applyUrl = h('button', {
-    type: 'button', class: 'btn',
-    onclick: () => {
-      const v = url.value.trim();
-      if (!/^https?:\/\//i.test(v)) { toast('Saisissez une adresse commençant par https://', { kind: 'warn' }); return; }
-      store.update(c => { c.background.src = v; c.background.kind = kind.value === 'auto' ? kindFor(v) : kind.value; });
-      url.value = '';
-      updateBgInfo();
-    },
-  }, 'Appliquer');
   const removeBg = h('button', {
     type: 'button', class: 'btn link-btn',
     onclick: () => { store.update(c => { c.background.src = ''; }); updateBgInfo(); },
@@ -351,8 +334,7 @@ function designSection() {
 
   return section('Design & fond',
     drop, fileInput, bgInfo,
-    h('div', { class: 'row' }, url),
-    h('div', { class: 'row' }, kind, applyUrl, removeBg),
+    h('div', { class: 'row' }, removeBg),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Assombrissement du fond (voile) ', overlayOut), overlay),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Opacité des catégories'), opacity),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Charte de couleurs'), palette),

@@ -55,6 +55,8 @@ export function normalize(cfg) {
   c.theme = { ...d.theme, ...(c.theme || {}) };
   if (!['classic', 'nature'].includes(c.theme.palette)) c.theme.palette = 'classic';
   c.background = { ...d.background, ...(c.background || {}) };
+  // Fond : uniquement un fichier envoyé (media:<id>), plus d'adresse web.
+  if (typeof c.background.src !== 'string' || !c.background.src.startsWith('media:')) c.background.src = '';
   c.weather = { ...d.weather, ...(c.weather || {}) };
   c.weather.enabled = c.weather.enabled !== false;
   if (!Number.isFinite(c.weather.lat) || !Number.isFinite(c.weather.lon)) {
