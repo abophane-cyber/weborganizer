@@ -1080,3 +1080,15 @@ body .cat-view .cards > .card.tile-dragging:nth-child(n) {
 body .cat-view .cards > .card.group-tile.tile:nth-child(n) {
   color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
 }
+/* Sous-catégories : tranche en biais, visible en bas ET sur le côté droit, comme un
+   bloc extrudé (ombres empilées en diagonale, 8 pas jusqu'à --thick). */
+body .cat-view .cards > .card.group-tile {
+  --t: calc(var(--thick) / 8);
+  box-shadow: var(--bevel),
+    calc(var(--t) * 1) calc(var(--t) * 1) 0 var(--edge-c), calc(var(--t) * 2) calc(var(--t) * 2) 0 var(--edge-c),
+    calc(var(--t) * 3) calc(var(--t) * 3) 0 var(--edge-c), calc(var(--t) * 4) calc(var(--t) * 4) 0 var(--edge-c),
+    calc(var(--t) * 5) calc(var(--t) * 5) 0 var(--edge-c), calc(var(--t) * 6) calc(var(--t) * 6) 0 var(--edge-c),
+    calc(var(--t) * 7) calc(var(--t) * 7) 0 var(--edge-c), var(--thick) var(--thick) 0 var(--edge-c),
+    calc(var(--thick) + 1px) calc(var(--thick) + 1px) 0 rgba(0, 0, 0, 0.45), var(--lift) !important;
+}
+body .cat-view .cards > .card.group-tile:active:not(.tile-dragging) { transform: translate(8px, 8px) !important; }
