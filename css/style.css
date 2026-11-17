@@ -189,12 +189,14 @@ body.editing .dock-hint { display: block; }
 body.editing .dock-item .dock-avatar { cursor: pointer; }
 
 /* ---- Carte seule : sans cadre ni titre ---- */
-/* Même largeur et même hauteur qu'une catégorie : elle s'aligne avec elles et se
-   déplace pareil (poignée en haut à gauche en mode édition). */
+/* Presque carrée : la moitié de la largeur d'une catégorie (deux cartes côte à côte
+   = une catégorie), donc elle s'aligne avec elles ; elle se déplace pareil
+   (poignée en haut à gauche en mode édition). */
 .category.bare {
   position: relative; padding: 0; background: none; border: 0; backdrop-filter: none; box-shadow: none;
-  --bare-h: 82px;
+  width: calc((100% - 18px) / 2); --bare-h: 150px;
 }
+.board-canvas > .category.bare { --cat-w: calc((min(100%, 380px) - 18px) / 2); }
 .category.bare .category-head { display: none; }
 body.editing .category.bare .category-head {
   display: flex; position: absolute; top: 3px; left: 3px; z-index: 2; margin: 0; padding: 0; border: 0;
@@ -203,14 +205,15 @@ body.editing .category.bare .edit-controls { padding: 2px; border-radius: 8px; b
 .category.bare .cards { grid-template-columns: 1fr !important; }
 .category.bare .add-card { display: none !important; }
 .category.bare .card.tile {
-  flex-direction: row; justify-content: flex-start; gap: 12px; text-align: left;
-  min-height: var(--bare-h); padding: 10px 16px; border-radius: var(--radius);
+  flex-direction: column; justify-content: center; gap: 10px; text-align: center;
+  min-height: var(--bare-h); padding: 14px 12px; border-radius: var(--radius);
 }
-.category.bare .card-text { align-items: flex-start; flex: 1; }
-.category.bare .card-name { font-size: 1.02rem; }
+.category.bare .card-text { align-items: center; flex: none; }
+.category.bare .avatar { width: 52px; height: 52px; }
+.category.bare .avatar-icon { width: 30px; height: 30px; }
+.category.bare .card-name { font-size: 1rem; }
 .category.bare .card:hover { transform: none; }
-body.editing .category.bare .card.tile { padding: 32px 16px 6px; flex-wrap: nowrap; }
-body.editing .category.bare .avatar { width: 34px; height: 34px; }
+body.editing .category.bare .card.tile { padding: 34px 12px 10px; flex-wrap: nowrap; }
 body.editing .category.bare .card-controls { position: absolute; top: 3px; right: 3px; width: auto; padding: 2px; background: rgba(10, 12, 16, 0.75); }
 
 /* Version de la page mise de côté */
