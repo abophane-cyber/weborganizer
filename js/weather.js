@@ -5,8 +5,10 @@ import { store } from './store.js';
 
 const API = 'https://api.open-meteo.com/v1/forecast';
 const GEO = 'https://geocoding-api.open-meteo.com/v1/search';
-const CACHE_KEY = 'wo.weather';
-const MAX_AGE = 30 * 60 * 1000; // relecture toutes les 30 minutes
+const CACHE_KEY = 'wo.weather.2';
+const MAX_AGE = 15 * 60 * 1000; // relecture toutes les 15 minutes
+// Tranches horaires des prévisions (heures locales, fin exclue).
+const PERIODS = { matin: [7, 12], aprem: [13, 19] };
 
 // Codes météo WMO -> [emoji, libellé].
 const CODES = {
@@ -40,6 +42,7 @@ async function fetchForecast(w) {
     latitude: w.lat, longitude: w.lon, timezone: 'auto', forecast_days: '7',
     current: 'temperature_2m,weather_code,is_day',
     daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max',
+    hourly: 'temperature_2m,weather_code,precipitation_probability',
   });
   const res = await fetch(`${API}?${q}`);
   if (!res.ok) throw new Error(`météo indisponible (${res.status})`);
@@ -55,11 +58,44 @@ export async function findCity(name) {
   return r ? { city: r.name, lat: Math.round(r.latitude * 100) / 100, lon: Math.round(r.longitude * 100) / 100 } : null;
 }
 
+// Résumé d'une tranche horaire d'un jour : temps le plus fréquent (le plus marqué en cas
+// d'égalité), température moyenne, risque de pluie maximal.
+function periodOf(dayIso, [from, to]) {
+  const hr = data?.hourly;
+  if (!hr) return null;
+  const idx = [];
+  hr.time.forEach((t, i) => {
+    const hour = Number(t.slice(11, 13));
+    if (t.startsWith(dayIso) && hour >= from && hour < to) idx.push(i);
+  });
+  if (!idx.length) return null;
+  const count = {};
+  for (const i of idx) count[hr.weather_code[i]] = (count[hr.weather_code[i]] || 0) + 1;
+  const code = Number(Object.keys(count).sort((a, b) => count[b] - count[a] || b - a)[0]);
+  const temps = idx.map(i => hr.temperature_2m[i]);
+  const rains = idx.map(i => hr.precipitation_probability?.[i]).filter(v => v != null);
+  return {
+    code,
+    temp: temps.reduce((a, b) => a + b, 0) / temps.length,
+    rain: rains.length ? Math.max(...rains) : null,
+  };
+}
+
+// Prochaine tranche à afficher dans l'en-tête, selon l'heure qu'il est.
+function upcoming() {
+  const d = data?.daily;
+  if (!d) return null;
+  const hour = new Date().getHours();
+  if (hour < PERIODS.aprem[0]) return { label: 'Cet après-midi', p: periodOf(d.time[0], PERIODS.aprem) };
+  if (d.time[1]) return { label: 'Demain matin', p: periodOf(d.time[1], PERIODS.matin) };
+  return null;
+}
+
 async function refresh({ force = false } = {}) {
   const w = store.get().weather;
   const key = placeKey(w);
   const cached = readCache();
-  if (!force && cached?.key === key && Date.now() - cached.at < MAX_AGE) {
+  if (!force && cached?.key === key && cached.data?.hourly && Date.now() - cached.at < MAX_AGE) {
     data = cached.data;
   } else {
     if (cached?.key === key) data = cached.data; // affiche l'ancienne en attendant
@@ -92,10 +128,32 @@ function render() {
       h('span', { class: 'wx-temp' }, deg(data.current.temperature_2m)),
       h('span', { class: 'wx-range' }, `${deg(d.temperature_2m_min[0])} / ${deg(d.temperature_2m_max[0])}`),
     ),
+    nextEl(),
     h('span', { class: 'wx-city' }, w.city),
   );
   btn.title = `${w.city} : ${label}. Cliquer pour la météo de la semaine.`;
   if (!pop.hidden) renderWeek();
+}
+
+function nextEl() {
+  const n = upcoming();
+  if (!n?.p) return null;
+  const [icon, label] = describe(n.p.code);
+  return h('span', { class: 'wx-next', title: `${n.label} : ${label}` },
+    h('span', { class: 'wx-next-label' }, n.label),
+    h('span', { class: 'wx-next-val' }, h('span', { class: 'wx-next-icon' }, icon), deg(n.p.temp)),
+  );
+}
+
+// Cellule matin / après-midi d'un jour de la semaine.
+function periodCell(iso, range, name) {
+  const p = periodOf(iso, range);
+  if (!p) return h('span', { class: 'wx-per empty' }, '—');
+  const [icon, label] = describe(p.code);
+  return h('span', { class: 'wx-per', title: `${name} : ${label}${p.rain != null ? `, pluie ${p.rain} %` : ''}` },
+    h('span', { class: 'wx-per-icon' }, icon),
+    h('span', { class: 'wx-per-temp' }, deg(p.temp)),
+  );
 }
 
 function renderWeek() {
@@ -110,14 +168,17 @@ function renderWeek() {
   };
   pop.replaceChildren(
     h('h2', { class: 'wx-pop-title' }, `Météo de la semaine — ${w.city}`),
+    h('div', { class: 'wx-day wx-head' },
+      h('span', {}, ''), h('span', {}, 'Matin'), h('span', {}, 'Après-midi'),
+      h('span', {}, 'Pluie'), h('span', {}, 'Min / max'),
+    ),
     h('ul', { class: 'wx-week' }, d.time.map((iso, i) => {
-      const [icon, label] = describe(d.weather_code[i]);
       const rain = d.precipitation_probability_max?.[i];
       return h('li', { class: `wx-day${i === 0 ? ' today' : ''}` },
         h('span', { class: 'wx-day-name' }, dayName(iso, i)),
-        h('span', { class: 'wx-day-icon', title: label }, icon),
-        h('span', { class: 'wx-day-label' }, label),
-        h('span', { class: 'wx-day-rain', title: 'Risque de pluie' }, rain != null ? `💧 ${rain} %` : ''),
+        periodCell(iso, PERIODS.matin, 'Matin'),
+        periodCell(iso, PERIODS.aprem, 'Après-midi'),
+        h('span', { class: 'wx-day-rain', title: 'Risque de pluie sur la journée' }, rain != null ? `💧 ${rain} %` : ''),
         h('span', { class: 'wx-day-temps' },
           h('span', { class: 'wx-min' }, deg(d.temperature_2m_min[i])),
           h('span', { class: 'wx-max' }, deg(d.temperature_2m_max[i])),
@@ -155,6 +216,15 @@ export function initWeather() {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible' && store.get().weather.enabled) refresh();
   });
-  setInterval(() => { if (store.get().weather.enabled) refresh(); }, MAX_AGE);
+  // Chaque minute : l'en-tête suit l'heure (après-midi -> demain matin) et les
+  // prévisions sont relues dès qu'elles ont plus de 15 minutes.
+  let lastHour = new Date().getHours();
+  setInterval(() => {
+    if (!store.get().weather.enabled) return;
+    const hour = new Date().getHours();
+    const cached = readCache();
+    if (hour !== lastHour || !cached || Date.now() - cached.at >= MAX_AGE) refresh();
+    lastHour = hour;
+  }, 60 * 1000);
   if (store.get().weather.enabled) refresh(); else render();
 }

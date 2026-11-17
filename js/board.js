@@ -135,6 +135,8 @@ function openButton(tag, label, count, onOpen) {
 function groupEl(cat, group, gi) {
   return h('div', {
     class: `group${group.color ? ' tinted' : ''}`,
+    // tone : rang de la sous-catégorie (0 à 3), pour alterner les teintes de la charte « Nature ».
+    dataset: { tone: String(gi % 4) },
     style: group.color ? { '--group-color': group.color } : null,
   },
     h('div', { class: 'group-head' },

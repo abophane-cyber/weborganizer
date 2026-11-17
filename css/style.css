@@ -73,7 +73,7 @@ body.editing .top .settings-btn { display: none; }
   font-size: 1rem; font-weight: 600; color: var(--text); max-width: 160px; overflow: hidden; text-overflow: ellipsis;
 }
 .weather-pop {
-  position: absolute; top: calc(100% + 8px); right: 0; width: 400px; padding: 14px 16px 10px;
+  position: absolute; top: calc(100% + 8px); right: 0; width: 480px; padding: 14px 16px 10px;
   border-radius: var(--radius); border: 1px solid var(--border);
   background: rgba(22, 26, 34, 0.94); backdrop-filter: blur(12px);
   box-shadow: 0 14px 40px rgba(0, 0, 0, .55);
@@ -81,7 +81,7 @@ body.editing .top .settings-btn { display: none; }
 .wx-pop-title { margin: 0 0 8px; font-size: .95rem; }
 .wx-week { list-style: none; margin: 0; padding: 0; }
 .wx-day {
-  display: grid; grid-template-columns: 7.5em 1.8em 1fr auto 4.6em; align-items: center; gap: 8px;
+  display: grid; grid-template-columns: 7.5em 1fr 1fr 4.6em 5em; align-items: center; gap: 8px;
   padding: 7px 6px; border-top: 1px solid rgba(255, 255, 255, 0.07); font-size: .9rem;
 }
 .wx-day:first-child { border-top: 0; }
@@ -514,11 +514,11 @@ body.editing .cat-view { --n: var(--ne); }
 /* Sous-catégorie : encadré en retrait, icône de dossier devant le nom */
 .group {
   margin-top: 12px; padding: 8px 10px 10px; border-radius: 10px;
-  background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.09);
+  background: rgba(255, 255, 255, 0.09); border: 1px solid rgba(255, 255, 255, 0.16);
   border-left: 3px solid var(--group-color, rgba(255, 255, 255, 0.3));
   box-shadow: 3px 4px 10px rgba(0, 0, 0, 0.35);
 }
-.group.tinted { background: color-mix(in srgb, var(--group-color) 40%, transparent); }
+.group.tinted { background: color-mix(in srgb, var(--group-color) 68%, transparent); }
 .group.tinted {
   border: 1px solid color-mix(in srgb, var(--group-color) 45%, #000);
   border-left: 3px solid color-mix(in srgb, var(--group-color) 70%, #fff);
@@ -809,3 +809,48 @@ body.palette-nature .card.colored { border-color: color-mix(in srgb, var(--card-
 body.palette-nature .category:not(.closed):not(.tinted):not(.bare) {
   background: var(--nat-sheen), color-mix(in srgb, var(--nat-pine) calc(var(--panel-alpha) * 100% + 25%), transparent);
 }
+
+/* Météo : prochaine tranche (après-midi ou demain matin) dans l'en-tête */
+.wx-next {
+  display: flex; flex-direction: column; justify-content: center; line-height: 1.15;
+  padding-left: 12px; border-left: 1px solid rgba(255, 255, 255, 0.18);
+}
+.wx-next-label { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.wx-next-val { display: flex; align-items: center; gap: 5px; font-weight: 700; font-size: 1.05rem; }
+.wx-next-icon { font-size: 1.3rem; line-height: 1; }
+/* Semaine : colonnes matin / après-midi */
+.wx-head { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; padding-top: 0; padding-bottom: 4px; border-top: 0; }
+.wx-head > :nth-child(2), .wx-head > :nth-child(3) { text-align: center; }
+.wx-head > :nth-child(5) { text-align: right; }
+.wx-per { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.wx-per-icon { font-size: 1.3rem; line-height: 1; }
+.wx-per-temp { font-weight: 600; }
+.wx-per.empty { color: var(--muted); }
+.wx-head > span { white-space: nowrap; }
+
+/* Charte Nature : sous-catégories en teintes de terre alternées (dans une catégorie ouverte) */
+body.palette-nature .group:not(.tinted) {
+  --nat-tone: var(--nat-sage);
+  background: var(--nat-sheen), color-mix(in srgb, var(--nat-tone) 58%, var(--nat-pine));
+  border: 1px solid color-mix(in srgb, var(--nat-tone) 60%, #fff 25%);
+  border-left: 4px solid color-mix(in srgb, var(--nat-tone) 70%, #fff 30%);
+  box-shadow: var(--nat-relief), 0 6px 14px -4px rgba(8, 20, 14, 0.55);
+}
+body.palette-nature .group[data-tone="1"]:not(.tinted) { --nat-tone: var(--nat-cocoa); }
+body.palette-nature .group[data-tone="2"]:not(.tinted) { --nat-tone: var(--nat-caramel); }
+body.palette-nature .group[data-tone="3"]:not(.tinted) { --nat-tone: var(--nat-sand); }
+body.palette-nature .group.tinted {
+  background: var(--nat-sheen), color-mix(in srgb, var(--group-color) 75%, var(--nat-pine));
+  box-shadow: var(--nat-relief), 0 6px 14px -4px rgba(8, 20, 14, 0.55);
+}
+body.palette-nature .group .group-head h3,
+body.palette-nature .group .group-icon { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4); }
+/* Tuiles de sous-catégories (écran d'une catégorie) : décalées par rapport aux cartes
+   pour ne pas reprendre les mêmes couleurs juste au-dessus */
+body.palette-nature .view-groups > :nth-child(4n+1) { --nat-tone: var(--nat-caramel); }
+body.palette-nature .view-groups > :nth-child(4n+2) { --nat-tone: var(--nat-sage); }
+body.palette-nature .view-groups > :nth-child(4n+3) { --nat-tone: var(--nat-sand); }
+body.palette-nature .view-groups > :nth-child(4n+4) { --nat-tone: var(--nat-cocoa); }
+body.palette-nature .view-groups > .card:not(.colored) { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
+body.palette-nature .view-groups > .card:nth-child(4n+3):not(.colored) { color: #3b2a1e; text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35); }
+body.palette-nature .cards.view-groups > .card:nth-child(4n+4):not(.colored) { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35); }
