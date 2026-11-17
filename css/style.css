@@ -517,6 +517,10 @@ body.editing .cat-view { --n: var(--ne); }
 .cat-view .cards { grid-template-columns: repeat(auto-fit, 210px); justify-content: start; gap: 18px; }
 .cat-view .add-group { margin-left: auto; margin-right: auto; }
 .cat-view .tile { min-height: 150px; }
+/* Écran d'une catégorie : contenu des tuiles calé en haut (et non centré), pour que
+   icônes et noms soient à la même hauteur, avec ou sans compteur dessous. */
+.cat-view .cards > .tile { justify-content: flex-start; padding-top: 24px; }
+body.editing .cat-view .cards > .tile { padding-top: 38px; }
 .cat-view .add-group { max-width: 380px; margin-top: 18px; }
 .group-tile .avatar { color: #fff; }
 .view-empty { color: var(--muted); text-align: center; margin: 32px 0; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
