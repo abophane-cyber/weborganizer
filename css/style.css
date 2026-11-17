@@ -1065,13 +1065,13 @@ body .cat-view .view-groups > .card.group-tile:hover {
 }
 .cat-view .group-tile .badge { background: rgba(255, 255, 255, 0.16); color: #fff; }
 /* Nombre de cartes sous le nom : chiffre extrudé, comme un numéro de maison en
-   métal rouillé posé à distance du mur. Face rouille, flanc plus
+   métal posé à distance du mur. Face un peu plus claire que la tuile, flanc plus
    foncé (ombres empilées vers le bas à droite), puis ombre portée douce sur la vitre. */
 .cat-view .group-tile .group-count {
-  --gc-c: #8f4a26; /* rouille */
+  --gc-c: var(--gt-c, #8a93a6);
   margin-top: -2px;
   font-size: 2.3rem; font-weight: 500; line-height: 1; letter-spacing: .02em;
-  color: color-mix(in srgb, var(--gc-c) 88%, #e0a070);
+  color: color-mix(in srgb, var(--gc-c) 55%, #fff);
   text-shadow:
     1px 1px 0 color-mix(in srgb, var(--gc-c) 70%, #000),
     2px 2px 0 color-mix(in srgb, var(--gc-c) 62%, #000),
