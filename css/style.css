@@ -103,24 +103,29 @@ body.editing .movable:hover { outline-color: var(--accent); }
 .banner span { flex: 1 1 240px; }
 
 /* ---- Tableau ---- */
-/* Grille centrée : colonnes de largeur fixe (auto-fit supprime les colonnes vides,
-   justify-content les centre). Les catégories d'une même ligne ont la même hauteur. */
+/* Tableau en colonnes, centré : chaque colonne empile ses catégories. */
 .board {
-  flex: 1;
-  display: grid; gap: 18px; align-items: stretch; align-content: start;
-  grid-template-columns: repeat(auto-fit, minmax(min(100%, 340px), 380px));
-  justify-content: center;
+  flex: 1; display: flex; flex-direction: column; align-items: center; gap: 18px;
   padding: 16px clamp(16px, 4vw, 48px) 32px;
 }
-.category.collapsed { align-self: start; }
-.add-category { align-self: start; }
+.board-cols { display: flex; justify-content: center; align-items: flex-start; gap: 18px; width: 100%; flex-wrap: wrap; }
+.board-col { display: flex; flex-direction: column; gap: 18px; width: min(100%, 380px); min-height: 40px; border-radius: var(--radius); }
+.add-category { width: min(100%, 380px); }
+.col-drop {
+  justify-content: center; align-items: center; min-height: 56px; border-radius: var(--radius);
+  border: 1px dashed rgba(255, 255, 255, 0.22); color: var(--muted); font-size: .82rem;
+}
+.board-col.drop-end .col-drop { border-color: var(--accent); color: var(--text); background: rgba(110, 168, 254, 0.12); }
+body.searching .col-drop { display: none !important; }
+/* Hors édition, une colonne vide ne prend pas de place (la page reste centrée). */
+body:not(.editing) .board-col:not(:has(.category)) { display: none; }
 
 /* Glisser-déposer des catégories */
 .drag-handle { display: grid; place-items: center; width: 22px; height: 26px; cursor: grab; color: var(--muted); border-radius: 6px; touch-action: none; }
 .drag-handle:hover { color: var(--text); background: rgba(255, 255, 255, 0.1); }
 .category.dragging { opacity: .45; }
-.category.drop-before { box-shadow: -5px 0 0 var(--accent); }
-.category.drop-after { box-shadow: 5px 0 0 var(--accent); }
+.category.drop-before { box-shadow: 0 -5px 0 var(--accent); }
+.category.drop-after { box-shadow: 0 5px 0 var(--accent); }
 .category {
   background: rgba(18, 21, 28, var(--panel-alpha));
   border: 1px solid var(--border); border-radius: var(--radius);
@@ -131,49 +136,47 @@ body.editing .movable:hover { outline-color: var(--accent); }
 .category-head h2 { margin: 0; font-size: 1.02rem; font-weight: 650; letter-spacing: .02em; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .category-icon { width: 22px; height: 22px; flex: none; border-radius: 5px; object-fit: contain; }
 
-.cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); }
-.cards-profiles { grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
+.cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(112px, 1fr)); }
 
+/* ---- Cartes : style « tuile » par défaut (comme les profils Chrome) ---- */
 .card {
   position: relative; display: flex; align-items: center; gap: 10px; min-width: 0;
   padding: 10px 12px; border-radius: 11px; text-decoration: none; color: var(--text);
-  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: transform .12s ease, background .12s ease, box-shadow .12s ease;
+  background: rgba(255, 255, 255, 0.07); border: 1px solid rgba(255, 255, 255, 0.1);
+  transition: transform .12s ease, background .12s ease, box-shadow .12s ease, filter .12s ease;
 }
 .card:hover { background: rgba(255, 255, 255, 0.13); transform: translateY(-1px); }
 .card:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.link-card.colored { background: var(--card-bg); border-color: rgba(255, 255, 255, 0.14); color: #fff; }
-.link-card.colored:hover { background: var(--card-bg); filter: brightness(1.12); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
-.link-card.colored .badge { background: rgba(255, 255, 255, 0.2); }
-/* Cartes Gmail */
-.gmail-card {
-  --gmail-accent: #EA4335;
-  background: #F6F8FC; color: #202124;
-  border: 1px solid #E3E6EA; border-left: 4px solid var(--gmail-accent);
-  padding-block: 8px;
+.tile { flex-direction: column; justify-content: center; gap: 6px; padding: 12px 8px 10px; text-align: center; }
+.card.colored { background: var(--card-bg); border-color: rgba(255, 255, 255, 0.14); color: #fff; }
+.card.colored:hover { background: var(--card-bg); filter: brightness(1.12); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
+
+/* Cercle central : photo, icône, favicône ou initiale */
+.avatar {
+  width: 40px; height: 40px; flex: none; border-radius: 50%; overflow: hidden;
+  display: grid; place-items: center; background: rgba(255, 255, 255, 0.15);
 }
-.gmail-card:hover { background: #FFFFFF; box-shadow: 0 6px 18px rgba(0,0,0,.28); }
-.card-text { display: flex; flex-direction: column; flex: 1; min-width: 0; line-height: 1.25; }
-.gmail-card .card-title { font-weight: 600; }
-.card-email { font-size: .76rem; color: #5F6368; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.gmail-card .badge { background: #FCE8E6; color: #C5221F; }
-.gmail-card .edit-btn { color: #202124; }
-.gmail-card .edit-btn:hover { background: rgba(0, 0, 0, 0.08); }
-.gmail-card .icon-fallback { background: var(--gmail-accent); color: #fff; }
-/* Carte Gmail avec couleur personnalisée : fond coloré, texte blanc, liseré rouge conservé. */
-.gmail-card.colored { background: var(--card-bg); color: #fff; border-color: rgba(255, 255, 255, 0.14); border-left-color: var(--gmail-accent); }
-.gmail-card.colored:hover { background: var(--card-bg); }
-.gmail-card.colored .card-email { color: rgba(255, 255, 255, 0.78); }
-.gmail-card.colored .badge { background: rgba(255, 255, 255, 0.2); color: #fff; }
-.gmail-card.colored .edit-btn { color: #fff; }
-.gmail-card.colored .edit-btn:hover { background: rgba(255, 255, 255, 0.18); }
-.gmail-card.colored .card-icon { background: #fff; border-radius: 6px; padding: 2px; }
+.avatar-img { width: 100%; height: 100%; object-fit: cover; }
+.avatar-icon { width: 24px; height: 24px; object-fit: contain; border-radius: 4px; }
+.avatar .icon-glyph { display: grid; place-items: center; color: #fff; width: 100%; height: 100%; }
+.avatar .icon-glyph svg { width: 21px; height: 21px; }
+.avatar .icon-emoji { width: 100%; height: 100%; font-size: 20px; }
+.avatar .icon-fallback { width: 100%; height: 100%; background: transparent; color: #fff; font-size: 17px; border-radius: 50%; }
+
+.card-text { display: flex; flex-direction: column; align-items: center; min-width: 0; max-width: 100%; line-height: 1.25; }
+.card-name { font-weight: 600; font-size: .92rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.card-sub { font-size: .7rem; opacity: .78; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Variante « ligne » (Paramètres → Design → Style des cartes) */
+body.cards-row .cards { grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr)); }
+body.cards-row .tile { flex-direction: row; justify-content: flex-start; text-align: left; padding: 8px 10px; }
+body.cards-row .card-text { align-items: flex-start; flex: 1; }
+body.cards-row .avatar { width: 32px; height: 32px; }
+body.cards-row .avatar-icon { width: 20px; height: 20px; }
 
 .check-row { display: flex; align-items: center; gap: 8px; cursor: pointer; }
 .check-row input { width: 16px; height: 16px; accent-color: var(--accent); margin: 0; }
 .link-blocked { opacity: .55; cursor: not-allowed; text-decoration: line-through; }
-.card-icon { width: 24px; height: 24px; flex: none; border-radius: 5px; object-fit: contain; }
-.card-title { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 /* Icône de secours (initiale) */
 .icon-fallback {
@@ -181,21 +184,9 @@ body.editing .movable:hover { outline-color: var(--accent); }
   background: var(--accent); color: #0d1117; border-radius: 6px; line-height: 1;
 }
 .icon-emoji { display: inline-grid; place-items: center; font-size: 18px; line-height: 1; }
-
-/* ---- Cartes de profils Chrome ---- */
-.chrome-card {
-  flex-direction: column; justify-content: center; gap: 6px;
-  padding: 12px 8px 10px; text-align: center;
-  background: var(--card-bg, #34495E); border-color: rgba(255, 255, 255, 0.14); color: #fff;
-}
-.chrome-card:hover { background: var(--card-bg, #34495E); filter: brightness(1.12); box-shadow: 0 6px 18px rgba(0,0,0,.3); }
-.avatar {
-  width: 40px; height: 40px; flex: none; border-radius: 50%; overflow: hidden;
-  display: grid; place-items: center; background: rgba(255, 255, 255, 0.15);
-}
-.avatar-img { width: 100%; height: 100%; object-fit: cover; }
-.avatar .icon-fallback { width: 100%; height: 100%; background: transparent; color: #fff; font-size: 17px; border-radius: 50%; }
-.card-name { font-weight: 600; font-size: .92rem; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Icône de la bibliothèque dans le titre d'une catégorie : pastille blanche */
+.category-icon.icon-glyph { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #fff; color: #1f2a44; }
+.category-icon.icon-glyph svg { width: 16px; height: 16px; }
 
 .badge {
   display: inline-block; flex: none; padding: 1px 8px; border-radius: 999px;
@@ -211,9 +202,9 @@ body.editing .edit-only { display: flex; }
   position: absolute; top: 3px; right: 3px; padding: 2px; border-radius: 8px;
   background: rgba(10, 12, 16, 0.75);
 }
-body.editing .chrome-card { padding-top: 34px; }
-body.editing .link-card { padding-right: 12px; flex-wrap: wrap; }
-body.editing .link-card .card-controls { position: static; order: 5; width: 100%; justify-content: flex-end; background: transparent; padding: 0; }
+body.editing .tile { padding-top: 34px; }
+body.editing.cards-row .tile { padding-top: 8px; padding-right: 8px; flex-wrap: wrap; }
+body.editing.cards-row .card-controls { position: static; order: 5; width: 100%; justify-content: flex-end; background: transparent; padding: 0; }
 .edit-btn {
   display: grid; place-items: center; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 6px;
   background: transparent; color: #fff; cursor: pointer;
@@ -248,8 +239,6 @@ body.searching .add-card, body.searching .add-group, body.searching .add-categor
 body.searching .collapsed-count { display: none !important; }
 .search-empty { grid-column: 1 / -1; text-align: center; color: var(--muted); margin: 24px 0; text-shadow: 0 1px 6px rgba(0,0,0,.6); }
 
-/* Cartes Gmail plus larges, pour lire l'adresse */
-.cards:has(.gmail-card) { grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
 
 /* Sous-catégories */
 .group { margin-top: 14px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.1); }
@@ -370,6 +359,25 @@ input[type=range] { width: 100%; accent-color: var(--accent); }
 .image-preview .icon-fallback { width: 100%; height: 100%; }
 .image-field-inputs { flex: 1; min-width: 0; display: grid; gap: 6px; }
 .image-field-row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+/* Sélecteur d'icônes et de favicônes */
+.picker-panel { display: grid; gap: 8px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface-2); }
+.picker-filter { width: 100%; }
+.icon-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: 8px; max-height: 220px; overflow-y: auto; padding: 2px; }
+.icon-choice {
+  display: grid; place-items: center; aspect-ratio: 1; border-radius: 50%; cursor: pointer;
+  border: 1px solid #dfe3ea; background: #fff; color: #1f2a44;
+}
+.icon-choice:hover { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(110,168,254,.35); }
+.icon-choice.selected { border: 2px solid #1f2a44; box-shadow: 0 0 0 2px var(--accent); }
+.favicon-grid { display: flex; flex-wrap: wrap; gap: 8px; }
+.favicon-choice {
+  display: grid; justify-items: center; gap: 4px; width: 92px; padding: 8px 4px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: .72rem;
+}
+.favicon-choice img { width: 32px; height: 32px; object-fit: contain; background: #fff; border-radius: 6px; padding: 2px; }
+.favicon-choice:hover, .favicon-choice.selected { border-color: var(--accent); color: var(--text); }
+.image-preview .icon-glyph { display: grid; place-items: center; width: 100%; height: 100%; background: #fff; color: #1f2a44; }
+
 .file-name { font-size: .82rem; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 160px; }
 
 /* ---- Notifications ---- */

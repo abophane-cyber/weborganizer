@@ -1,7 +1,8 @@
 // Affichage des catégories, sous-catégories et cartes.
 import { h, svgIcon, safeUrl, gmailInfo } from './util.js';
-import { store } from './store.js';
-import { iconEl, imageEl, faviconFor, fallbackIcon } from './icons.js';
+import { store, columnLayout } from './store.js';
+import { iconEl, faviconFor } from './icons.js';
+import { isMediaRef } from './media.js';
 import { openChromeProfile, profileUrl, PROFILE_DIR_RE } from './chrome-profiles.js';
 import * as actions from './actions.js';
 
@@ -23,39 +24,32 @@ function cardControls(ctx, card, i) {
   );
 }
 
-function linkCard(ctx, card, i) {
-  const url = safeUrl(card.url);
-  const icon = card.icon || faviconFor(url);
-  const color = /^#[0-9a-f]{6}$/i.test(card.color || '') ? card.color : '';
-  const gmail = url ? gmailInfo(url) : null;
-  if (gmail) return gmailCard(ctx, card, i, url, gmail.email, color);
-  return h('a', {
-    class: `card link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`, href: url || null,
-    style: color ? { '--card-bg': color } : null,
-    target: url ? '_blank' : null, rel: 'noopener noreferrer',
-    title: url || 'Adresse refusée (seuls les liens http, https et mailto sont autorisés)',
-    'aria-disabled': url ? null : 'true',
-  },
-    iconEl(icon, card.title, 'card-icon'),
-    h('span', { class: 'card-title' }, card.title || card.url || 'Sans titre'),
-    card.badge && h('span', { class: 'badge' }, card.badge),
-    cardControls(ctx, card, i),
-  );
+// Contenu du cercle : photo / image envoyée (plein cercle), icône de la bibliothèque,
+// favicône ou image web (centrée), sinon l'initiale du nom.
+function avatarEl(src, label) {
+  const full = isMediaRef(src);
+  return h('span', { class: 'avatar' }, iconEl(src, label, full ? 'avatar-img' : 'avatar-icon'));
 }
 
-// Style « aux couleurs de Gmail » : liseré rouge, nom + adresse.
-// Fond clair par défaut, ou la couleur personnalisée (texte blanc).
-function gmailCard(ctx, card, i, url, email, color) {
-  const name = card.title || email || 'Gmail';
+// Toutes les cartes partagent la même structure ; le style « tuile » (par défaut,
+// comme les profils Chrome) ou « ligne » est choisi dans Paramètres → Design.
+function linkCard(ctx, card, i) {
+  const url = safeUrl(card.url);
+  const color = /^#[0-9a-f]{6}$/i.test(card.color || '') ? card.color : '';
+  const email = url ? gmailInfo(url)?.email || '' : '';
+  const name = card.title || email || url || 'Sans titre';
   return h('a', {
-    class: `card link-card gmail-card${color ? ' colored' : ''}`, href: url, target: '_blank', rel: 'noopener noreferrer',
-    title: email ? `Ouvrir la boîte ${email}` : 'Ouvrir Gmail',
+    class: `card tile link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`, href: url || null,
     style: color ? { '--card-bg': color } : null,
+    target: url ? '_blank' : null, rel: 'noopener noreferrer',
+    title: !url ? 'Adresse refusée (seuls les liens http, https et mailto sont autorisés)'
+      : email ? `Ouvrir la boîte ${email}` : url,
+    'aria-disabled': url ? null : 'true',
   },
-    iconEl(card.icon || faviconFor(url), name, 'card-icon'),
+    avatarEl(card.icon || faviconFor(url), name),
     h('span', { class: 'card-text' },
-      h('span', { class: 'card-title' }, name),
-      email && email !== name && h('span', { class: 'card-email' }, email),
+      h('span', { class: 'card-name' }, name),
+      email && email !== name && h('span', { class: 'card-sub' }, email),
     ),
     card.badge && h('span', { class: 'badge' }, card.badge),
     cardControls(ctx, card, i),
@@ -64,17 +58,14 @@ function gmailCard(ctx, card, i, url, email, color) {
 
 function chromeCard(ctx, card, i) {
   const valid = PROFILE_DIR_RE.test((card.profileDir || '').trim());
-  const avatar = card.photo
-    ? h('span', { class: 'avatar' }, imageEl(card.photo, card.title, 'avatar-img'))
-    : h('span', { class: 'avatar' }, fallbackIcon(card.title, 'avatar-letter'));
   return h('a', {
-    class: 'card chrome-card', href: valid ? profileUrl(card.profileDir) : '#',
+    class: 'card tile chrome-card colored', href: valid ? profileUrl(card.profileDir) : '#',
     style: { '--card-bg': card.color },
     title: valid ? `Ouvrir Chrome — profil « ${card.profileDir} »` : 'Dossier du profil à renseigner',
     onclick: e => { e.preventDefault(); openChromeProfile(card); },
   },
-    avatar,
-    h('span', { class: 'card-name' }, card.title || 'Profil'),
+    avatarEl(card.photo, card.title),
+    h('span', { class: 'card-text' }, h('span', { class: 'card-name' }, card.title || 'Profil')),
     card.badge && h('span', { class: 'badge' }, card.badge),
     cardControls(ctx, card, i),
   );
@@ -82,8 +73,7 @@ function chromeCard(ctx, card, i) {
 
 function cardsGrid(ctx) {
   const { list } = ctx;
-  const isProfiles = list.length > 0 && list.every(c => c.type === 'chrome');
-  return h('div', { class: `cards ${isProfiles ? 'cards-profiles' : ''}` },
+  return h('div', { class: 'cards' },
     list.map((card, i) => (card.type === 'chrome' ? chromeCard(ctx, card, i) : linkCard(ctx, card, i))),
     h('button', { type: 'button', class: 'card add-card edit-only', onclick: () => actions.addCard(ctx.cat.id, ctx.groupId) },
       svgIcon('plus', 16), 'Ajouter une carte'),
@@ -118,19 +108,22 @@ function groupEl(cat, group, gi) {
   );
 }
 
-function categoryEl(cat, ci, total) {
+// pos : { col, nCols, index, count } — place de la catégorie dans sa colonne.
+function categoryEl(cat, pos) {
   // Cartes directes : masquées si vides et qu'il y a des sous-catégories (sauf en mode édition).
   const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
   const cardCount = cat.cards.length + cat.groups.reduce((n, g) => n + g.cards.length, 0);
-  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}`, 'aria-label': cat.name },
+  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id } },
     h('header', { class: 'category-head' },
       iconEl(cat.icon, cat.name, 'category-icon'),
       collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),
       h('div', { class: 'edit-controls' },
-        h('span', { class: 'drag-handle', title: 'Glisser pour déplacer la catégorie', 'aria-hidden': 'true' }, svgIcon('grip', 16)),
-        ci > 0 && editButton('left', 'Déplacer la catégorie avant', () => actions.moveCategory(cat.id, -1)),
-        ci < total - 1 && editButton('right', 'Déplacer la catégorie après', () => actions.moveCategory(cat.id, 1)),
+        h('span', { class: 'drag-handle', title: 'Glisser pour déplacer la catégorie (dessus, dessous, autre colonne)', 'aria-hidden': 'true' }, svgIcon('grip', 16)),
+        pos.col > 0 && editButton('left', 'Colonne de gauche', () => actions.moveCategoryColumn(cat.id, -1)),
+        pos.col < pos.nCols - 1 && editButton('right', 'Colonne de droite', () => actions.moveCategoryColumn(cat.id, 1)),
+        pos.index > 0 && editButton('up', 'Monter la catégorie', () => actions.moveCategoryInColumn(cat.id, -1)),
+        pos.index < pos.count - 1 && editButton('down', 'Descendre la catégorie', () => actions.moveCategoryInColumn(cat.id, 1)),
         editButton('edit', 'Modifier la catégorie', () => actions.editCategory(cat.id)),
         editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
       ),
@@ -143,9 +136,12 @@ function categoryEl(cat, ci, total) {
 }
 
 // ---- Glisser-déposer des catégories (mode édition, par la poignée) ----
+// Sur une catégorie : moitié haute = au-dessus, moitié basse = en dessous.
+// Sur le vide d'une colonne : à la fin de cette colonne.
 let dragId = null;
 function clearDropMarks() {
-  document.querySelectorAll('.drop-before, .drop-after').forEach(el => el.classList.remove('drop-before', 'drop-after'));
+  document.querySelectorAll('.drop-before, .drop-after, .drop-end')
+    .forEach(el => el.classList.remove('drop-before', 'drop-after', 'drop-end'));
 }
 function enableCategoryDrag(section, cat) {
   const handle = section.querySelector('.drag-handle');
@@ -168,34 +164,57 @@ function enableCategoryDrag(section, cat) {
   section.addEventListener('dragover', e => {
     if (!dragId || dragId === cat.id) return;
     e.preventDefault();
+    e.stopPropagation();
     e.dataTransfer.dropEffect = 'move';
     const r = section.getBoundingClientRect();
-    const after = e.clientX > r.left + r.width / 2;
+    const after = e.clientY > r.top + r.height / 2;
     clearDropMarks();
     section.classList.add(after ? 'drop-after' : 'drop-before');
-  });
-  section.addEventListener('dragleave', e => {
-    if (!section.contains(e.relatedTarget)) section.classList.remove('drop-before', 'drop-after');
   });
   section.addEventListener('drop', e => {
     if (!dragId || dragId === cat.id) return;
     e.preventDefault();
+    e.stopPropagation();
     const after = section.classList.contains('drop-after');
     const moved = dragId;
     clearDropMarks();
-    actions.reorderCategory(moved, cat.id, after);
+    actions.placeCategory(moved, Number(section.closest('.board-col').dataset.col), cat.id, after);
+  });
+}
+function enableColumnDrop(col, index) {
+  col.addEventListener('dragover', e => {
+    if (!dragId) return;
+    e.preventDefault();
+    clearDropMarks();
+    col.classList.add('drop-end');
+  });
+  col.addEventListener('dragleave', e => { if (!col.contains(e.relatedTarget)) col.classList.remove('drop-end'); });
+  col.addEventListener('drop', e => {
+    if (!dragId) return;
+    e.preventDefault();
+    const moved = dragId;
+    clearDropMarks();
+    actions.placeCategory(moved, index, null, false);
   });
 }
 
 export function renderBoard(root) {
   const cfg = store.get();
-  const sections = cfg.categories.map((cat, i) => {
-    const el = categoryEl(cat, i, cfg.categories.length);
-    enableCategoryDrag(el, cat);
+  const { nCols, byColumn } = columnLayout(cfg);
+  const columns = byColumn.map((cats, col) => {
+    const el = h('div', { class: 'board-col', dataset: { col: String(col) } },
+      cats.map((cat, index) => {
+        const sec = categoryEl(cat, { col, nCols, index, count: cats.length });
+        enableCategoryDrag(sec, cat);
+        return sec;
+      }),
+      h('div', { class: 'col-drop edit-only', 'aria-hidden': 'true' }, 'Déposer ici'),
+    );
+    enableColumnDrop(el, col);
     return el;
   });
   root.replaceChildren(
-    ...sections,
+    h('div', { class: 'board-cols' }, columns),
     h('button', { type: 'button', class: 'add-category edit-only', onclick: () => actions.addCategory() },
       svgIcon('plus', 18), 'Ajouter une catégorie'),
     h('p', { class: 'search-empty', hidden: true }, 'Aucune carte ne correspond à la recherche.'),
@@ -220,8 +239,8 @@ function applySearch(root) {
   document.body.classList.toggle('searching', words.length > 0);
   const cfg = store.get();
   let shown = 0;
-  root.querySelectorAll('.category').forEach((section, ci) => {
-    const cat = cfg.categories[ci];
+  root.querySelectorAll('.category').forEach(section => {
+    const cat = cfg.categories.find(c => c.id === section.dataset.id);
     if (!cat) return;
     let catShown = 0;
     const holders = [{ el: section.querySelector(':scope > .cards'), list: cat.cards, group: null },

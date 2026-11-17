@@ -213,6 +213,12 @@ function designSection() {
   inputs.accent = bind(accent, c => c.theme.accent, (c, i) => { c.theme.accent = i.value; });
   const opacity = h('input', { type: 'range', min: '0', max: '0.95', step: '0.05' });
   inputs.opacity = bind(opacity, c => c.theme.panelOpacity, (c, i) => { c.theme.panelOpacity = Number(i.value); });
+  const cardStyle = h('select', {},
+    h('option', { value: 'tile' }, 'Tuiles (comme les profils)'),
+    h('option', { value: 'row' }, 'Lignes'));
+  inputs.cardStyle = bind(cardStyle, c => c.theme.cardStyle, (c, i) => { c.theme.cardStyle = i.value; }, 'change');
+  const columns = h('select', {}, [1, 2, 3, 4, 5].map(n => h('option', { value: String(n) }, String(n))));
+  inputs.columns = bind(columns, c => String(c.theme.columns), (c, i) => { c.theme.columns = Number(i.value); }, 'change');
   store.subscribe(() => { overlayOut.textContent = `${Math.round((store.get().background.overlay ?? 0) * 100)} %`; });
 
   return section('Design & fond',
@@ -222,6 +228,8 @@ function designSection() {
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Assombrissement du fond (voile) ', overlayOut), overlay),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Opacité des catégories'), opacity),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Couleur d’accent'), accent),
+    h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Style des cartes'), cardStyle),
+    h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Nombre de colonnes'), columns),
   );
 }
 

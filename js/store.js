@@ -25,7 +25,7 @@ export function defaultConfig() {
     logo: '',
     // Décalage (px) du logo et du titre par rapport à leur position centrée.
     layout: { logo: { x: 0, y: 0 }, title: { x: 0, y: 0 } },
-    theme: { accent: '#6ea8fe', panelOpacity: 0.55 },
+    theme: { accent: '#6ea8fe', panelOpacity: 0.55, cardStyle: 'tile', columns: 3 },
     background: { src: '', kind: 'image', overlay: 0.35 },
     media: {},
     categories: [
@@ -61,6 +61,7 @@ export function normalize(cfg) {
     cat.name ??= 'Catégorie';
     cat.icon ??= '';
     cat.collapsed = !!cat.collapsed;
+    if (!Number.isInteger(cat.column) || cat.column < 0) delete cat.column;
     cat.groups = Array.isArray(cat.groups) ? cat.groups : [];
     for (const g of cat.groups) {
       g.id ||= uid();
@@ -133,6 +134,18 @@ export const store = {
 
   subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); },
 };
+
+// Disposition en colonnes : chaque catégorie a une colonne (cat.column) ; l'ordre dans
+// une colonne suit l'ordre de la liste. Sans colonne enregistrée : réparties à tour de rôle.
+export function columnLayout(cfg) {
+  const nCols = Math.min(5, Math.max(1, Number(cfg.theme.columns) || 3));
+  const byColumn = Array.from({ length: nCols }, () => []);
+  cfg.categories.forEach((cat, i) => {
+    const col = Number.isInteger(cat.column) ? Math.min(cat.column, nCols - 1) : i % nCols;
+    byColumn[col].push(cat);
+  });
+  return { nCols, byColumn };
+}
 
 export function findCategory(id) { return config.categories.find(c => c.id === id); }
 export function findGroup(catId, groupId) { return findCategory(catId)?.groups.find(g => g.id === groupId); }

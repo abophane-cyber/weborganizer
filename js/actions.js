@@ -1,6 +1,6 @@
 // Actions d'édition : catégories, sous-catégories et cartes.
 import { h, uid, safeUrl, gmailInfo, EMAIL_RE } from './util.js';
-import { store, findCategory, findGroup, findHolder, findCard, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
+import { store, findCategory, findGroup, findHolder, findCard, columnLayout, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
 import { openModal, field, imageField } from './modal.js';
 import { PROFILE_DIR_RE } from './chrome-profiles.js';
 
@@ -16,7 +16,7 @@ const allCardsCount = cat => cat.cards.length + cat.groups.reduce((n, g) => n + 
 
 function categoryForm(cat, onSave) {
   const name = h('input', { type: 'text', value: cat.name || '', required: true, maxlength: '60' });
-  const icon = imageField('Icône', cat.icon, { emoji: true, help: 'Une URL d’image, un fichier ou un emoji. Vide : initiale du nom.' });
+  const icon = imageField('Icône', cat.icon, { emoji: true, icons: true, help: 'Une icône de la bibliothèque, une URL d’image, un fichier ou un emoji. Vide : initiale du nom.' });
   openModal({
     title: cat.id ? 'Modifier la catégorie' : 'Nouvelle catégorie',
     body: [field('Nom', name), icon.el],
@@ -47,6 +47,52 @@ export function toggleCategory(id) {
 export function toggleGroup(catId, groupId) {
   store.update(() => { const g = findGroup(catId, groupId); g.collapsed = !g.collapsed; });
 }
+// ---- Disposition en colonnes ----
+
+// Fige la colonne actuelle de chaque catégorie, puis réécrit la liste colonne par colonne
+// (l'ordre dans une colonne = l'ordre de la liste).
+function withColumns(c, mutate) {
+  const { byColumn } = columnLayout(c);
+  byColumn.forEach((cats, col) => cats.forEach(cat => { cat.column = col; }));
+  mutate(byColumn);
+  c.categories = byColumn.flatMap((cats, col) => cats.map(cat => Object.assign(cat, { column: col })));
+}
+
+// Place `id` dans la colonne `col`, au-dessus (ou en dessous si `after`) de `targetId`,
+// ou à la fin de la colonne si `targetId` est vide.
+export function placeCategory(id, col, targetId, after) {
+  if (id === targetId) return;
+  store.update(c => withColumns(c, cols => {
+    let moved = null;
+    for (const list of cols) {
+      const i = list.findIndex(x => x.id === id);
+      if (i >= 0) [moved] = list.splice(i, 1);
+    }
+    if (!moved) return;
+    const dest = cols[Math.min(Math.max(col, 0), cols.length - 1)];
+    const t = targetId ? dest.findIndex(x => x.id === targetId) : -1;
+    dest.splice(t < 0 ? dest.length : t + (after ? 1 : 0), 0, moved);
+  }));
+}
+export function moveCategoryColumn(id, dir) {
+  store.update(c => withColumns(c, cols => {
+    const from = cols.findIndex(list => list.some(x => x.id === id));
+    const to = from + dir;
+    if (from < 0 || to < 0 || to >= cols.length) return;
+    const i = cols[from].findIndex(x => x.id === id);
+    const [moved] = cols[from].splice(i, 1);
+    cols[to].splice(Math.min(i, cols[to].length), 0, moved);
+  }));
+}
+export function moveCategoryInColumn(id, dir) {
+  store.update(c => withColumns(c, cols => {
+    for (const list of cols) {
+      const i = list.findIndex(x => x.id === id);
+      if (i >= 0) { move(list, i, dir); return; }
+    }
+  }));
+}
+
 // Glisser-déposer : place la catégorie `id` avant ou après `targetId`.
 export function reorderCategory(id, targetId, after) {
   if (id === targetId) return;
@@ -110,6 +156,13 @@ function gmailUrl(email) {
   return `https://mail.google.com/mail/u/?authuser=${encodeURIComponent(email.trim().toLowerCase())}`;
 }
 const gmailAddressFrom = link => gmailInfo(link)?.email || '';
+// Adresse du site saisie dans le champ « Adresse » (e-mail -> Gmail), pour la favicône.
+function siteFor(value) {
+  const v = (value || '').trim();
+  if (!v) return '';
+  if (EMAIL_RE.test(v)) return 'https://mail.google.com/';
+  return safeUrl(/^[a-z][a-z0-9+.-]*:/i.test(v) ? v : 'https://' + v);
+}
 
 // Couleur : palette + code hexadécimal saisi au clavier, synchronisés.
 const HEX_RE = /^#?([0-9a-f]{3}|[0-9a-f]{6})$/i;
@@ -167,8 +220,11 @@ function cardForm(card, location, onSave) {
   });
   const color = colorInput(card.color || PROFILE_COLORS[card.title] || DEFAULT_PROFILE_COLOR);
   const badge = h('input', { type: 'text', value: card.badge || '', maxlength: '20', placeholder: 'ex. Tester' });
-  const icon = imageField('Icône', card.icon, { help: 'Vide : icône du site (favicon).' });
-  const photo = imageField('Photo (dans le cercle)', card.photo, { help: 'Vide : initiale du nom.' });
+  const icon = imageField('Icône (dans le cercle)', card.icon, {
+    icons: true, favicon: () => siteFor(url.value),
+    help: 'Vide : favicône du site, automatiquement.',
+  });
+  const photo = imageField('Photo ou icône (dans le cercle)', card.photo, { icons: true, help: 'Vide : initiale du nom.' });
 
   // Couleur facultative des cartes de lien (case à cocher + palette/code).
   const linkColor = colorInput(card.type !== 'chrome' && card.color ? card.color : '#3A4A6B');
@@ -176,7 +232,7 @@ function cardForm(card, location, onSave) {
   const linkColorRow = h('div', { class: 'field' },
     h('label', { class: 'check-row' }, useLinkColor, h('span', { class: 'field-label' }, 'Couleur personnalisée')),
     linkColor.el,
-    h('span', { class: 'field-help' }, 'Fond coloré et texte blanc. Décoché : style habituel (fond clair pour une carte Gmail).'));
+    h('span', { class: 'field-help' }, 'Fond coloré et texte blanc. Décoché : fond neutre transparent.'));
   const syncLinkColor = () => { linkColor.el.hidden = !useLinkColor.checked; };
   useLinkColor.addEventListener('change', syncLinkColor);
   syncLinkColor();

@@ -14,7 +14,11 @@
   <div id="bg" aria-hidden="true"><div id="bg-media"></div><div id="bg-overlay"></div></div>
   <div id="banner"></div>
   <header class="top">
-    <div class="top-text"><h1 id="title"></h1><p id="desc"></p></div>
+    <div class="top-text">
+      <div id="logo" class="logo movable" hidden></div>
+      <div id="title-block" class="title-block movable"><h1 id="title"></h1><p id="desc"></p></div>
+      <div class="search"><input id="search" type="search" aria-label="Rechercher"></div>
+    </div>
     <button id="settings-btn" class="icon-btn settings-btn" type="button" aria-label="Paramètres">⚙<span class="sync-dot"></span></button>
   </header>
   <main id="board" class="board"></main>

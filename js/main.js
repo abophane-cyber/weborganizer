@@ -74,6 +74,7 @@ function renderHeader() {
   const root = document.documentElement.style;
   root.setProperty('--accent', c.theme.accent);
   root.setProperty('--panel-alpha', String(c.theme.panelOpacity));
+  document.body.classList.toggle('cards-row', c.theme.cardStyle === 'row');
 }
 
 function render() {
