@@ -1023,6 +1023,14 @@ body.editing:not(.searching) .category.closed .edit-controls {
   position: absolute; z-index: 2; top: 6px; left: 50%; transform: translateX(-50%);
   flex-wrap: nowrap; padding: 2px; border-radius: 8px; background: rgba(10, 12, 16, 0.55);
 }
+/* Icônes et noms alignés d'un pavé à l'autre : contenu calé en haut avec le même
+   retrait partout (au lieu d'être centré, ce qui le décalait selon la longueur du
+   nom et la présence d'un compteur). */
+body:not(.searching) .category.closed,
+.category.bare .card.tile { justify-content: flex-start; padding-top: 22px; }
+.category.bare .card.tile { padding-top: 21px; }  /* bordure 1 px plus épaisse */
+body.editing:not(.searching) .category.closed { padding-top: 38px; }
+body.editing .category.bare .card.tile { padding-top: 37px; }
 body:not(.searching) .category.closed .open-toggle h2,
 .category.bare .card-name {
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2;
