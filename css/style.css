@@ -1059,7 +1059,7 @@ body .cat-view .cards > .card.group-tile:hover {
 .cat-view .group-tile .group-count {
   --gc-c: var(--gt-c, #8a93a6);
   margin-top: -2px;
-  font-size: 2.3rem; font-weight: 500; line-height: 1; letter-spacing: .02em;
+  font-size: 1.8rem; font-weight: 500; line-height: 1; letter-spacing: .02em;
   color: color-mix(in srgb, var(--gc-c) 55%, #fff);
   text-shadow:
     1px 1px 0 color-mix(in srgb, var(--gc-c) 70%, #000),
