@@ -264,13 +264,19 @@ function viewEl(view) {
     ];
   }
   const empty = group ? !group.cards.length : !cat.cards.length && !cat.groups.length;
+  // Nombre de tuiles de la plus longue rangée (hors édition / en édition, avec la
+  // tuile « Ajouter une carte ») : le bloc prend exactement la largeur des tuiles,
+  // ainsi « Retour » se place juste au-dessus, sur leur bord gauche.
+  const cards = group ? group.cards.length : cat.cards.length;
+  const groups = group ? 0 : cat.groups.length;
+  const nv = Math.max(cards, groups), ne = Math.max(cards + 1, groups);
   return h('section', {
     class: 'cat-view', 'aria-label': group ? group.name : cat.name,
-    style: color ? { '--cat-color': color } : null,
+    style: { ...(color ? { '--cat-color': color } : {}), '--nv': String(nv), '--ne': String(ne) },
   },
-    head,
-    // Le contenu est centré dans la hauteur restante de l'écran.
+    // Retour + titre + tuiles forment un seul bloc, centré sur l'écran.
     h('div', { class: 'view-body' },
+      head,
       body,
       empty && h('p', { class: 'view-empty' }, 'Aucune carte pour l’instant. Ouvrez les Paramètres pour en ajouter.'),
     ),

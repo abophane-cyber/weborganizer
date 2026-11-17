@@ -416,8 +416,17 @@ body.editing:not(.searching) .category.closed .edit-controls { order: -1; flex-w
 /* ---- Écran d'une catégorie / sous-catégorie (bouton Retour) ---- */
 body.viewing .top-text { display: none; }
 /* L'écran occupe toute la hauteur ; les tuiles sont centrées verticalement sous le titre */
-.cat-view { width: 100%; flex: 1; display: flex; flex-direction: column; }
-.view-body { flex: 1; display: flex; flex-direction: column; justify-content: center; padding-bottom: 6vh; }
+.cat-view {
+  width: 100%; flex: 1; display: flex; flex-direction: column; justify-content: center;
+  container-type: inline-size; --n: var(--nv);
+}
+body.editing .cat-view { --n: var(--ne); }
+/* Largeur du bloc = largeur occupée par les tuiles (210 px + 18 px d'écart chacune),
+   limitée à ce qui tient dans l'écran ; au moins assez pour Retour + titre. */
+.view-body {
+  width: max(min(438px, 100%), calc(min(var(--n) * 228px, round(down, 100cqw + 18px, 228px)) - 18px));
+  max-width: 100%; margin: 0 auto; padding-bottom: 6vh;
+}
 .view-head {
   display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 12px;
   margin: 0 0 22px;
@@ -440,7 +449,7 @@ body.viewing .top-text { display: none; }
 .view-icon { display: grid; place-items: center; color: var(--muted); }
 .view-controls { justify-self: end; }
 /* Tuiles de largeur fixe, centrées sur l'écran (auto-fit : pas de colonnes vides) */
-.cat-view .cards { grid-template-columns: repeat(auto-fit, 210px); justify-content: center; gap: 18px; }
+.cat-view .cards { grid-template-columns: repeat(auto-fit, 210px); justify-content: start; gap: 18px; }
 .cat-view .add-group { margin-left: auto; margin-right: auto; }
 .cat-view .tile { min-height: 150px; }
 .cat-view .view-groups { margin-top: 18px; }
