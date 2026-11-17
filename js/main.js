@@ -111,6 +111,26 @@ function welcomeBanner() {
   cloud.onAuthChange(ok => ok && banner.replaceChildren());
 }
 
+// Bouton plein écran (en bas à droite, au-dessus des Paramètres). Le navigateur
+// n'autorise le plein écran qu'après un clic ; Échap ou un second clic en sort.
+function initFullscreen() {
+  const btn = document.getElementById('fullscreen-btn');
+  if (!document.fullscreenEnabled) return;
+  btn.hidden = false;
+  const sync = () => {
+    const on = !!document.fullscreenElement;
+    btn.classList.toggle('is-on', on);
+    btn.setAttribute('aria-label', on ? 'Quitter le plein écran' : 'Plein écran');
+    btn.title = on ? 'Quitter le plein écran (Échap)' : 'Plein écran (touche Échap pour sortir)';
+  };
+  btn.addEventListener('click', () => {
+    const p = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+    p?.catch?.(e => toast(`Plein écran impossible : ${e.message}`, { kind: 'error' }));
+  });
+  document.addEventListener('fullscreenchange', sync);
+  sync();
+}
+
 async function start() {
   await cloud.init();
   await store.load();
@@ -120,6 +140,7 @@ async function start() {
   initMovable();
   initSettings();
   initWeather();
+  initFullscreen();
   await sync.init();
   welcomeBanner();
 
