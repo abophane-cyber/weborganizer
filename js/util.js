@@ -23,6 +23,21 @@ export function h(tag, props, ...kids) {
   return el;
 }
 
+// N'accepte que les liens web et e-mail. Tout le reste (javascript:, data:, vbscript:,
+// file:…) est refusé, quelle que soit l'origine de la config (import, pCloud, cache).
+const SAFE_PROTOCOLS = new Set(['http:', 'https:', 'mailto:']);
+export function safeUrl(value) {
+  if (typeof value !== 'string') return '';
+  const v = value.trim();
+  if (!v) return '';
+  try {
+    const u = new URL(v);
+    return SAFE_PROTOCOLS.has(u.protocol) ? u.href : '';
+  } catch {
+    return '';
+  }
+}
+
 export function uid() {
   const a = new Uint8Array(6);
   crypto.getRandomValues(a);

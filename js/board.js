@@ -1,5 +1,5 @@
 // Affichage des catégories, sous-catégories et cartes.
-import { h, svgIcon } from './util.js';
+import { h, svgIcon, safeUrl } from './util.js';
 import { store } from './store.js';
 import { iconEl, imageEl, faviconFor, fallbackIcon } from './icons.js';
 import { openChromeProfile, profileUrl, PROFILE_DIR_RE } from './chrome-profiles.js';
@@ -24,10 +24,13 @@ function cardControls(ctx, card, i) {
 }
 
 function linkCard(ctx, card, i) {
-  const icon = card.icon || faviconFor(card.url);
+  const url = safeUrl(card.url);
+  const icon = card.icon || faviconFor(url);
   return h('a', {
-    class: 'card link-card', href: card.url || '#', target: '_blank', rel: 'noopener noreferrer',
-    title: card.url,
+    class: `card link-card${url ? '' : ' link-blocked'}`, href: url || null,
+    target: url ? '_blank' : null, rel: 'noopener noreferrer',
+    title: url || 'Adresse refusée (seuls les liens http, https et mailto sont autorisés)',
+    'aria-disabled': url ? null : 'true',
   },
     iconEl(icon, card.title, 'card-icon'),
     h('span', { class: 'card-title' }, card.title || card.url || 'Sans titre'),

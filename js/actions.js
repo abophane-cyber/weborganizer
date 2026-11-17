@@ -1,5 +1,5 @@
 // Actions d'édition : catégories, sous-catégories et cartes.
-import { h, uid } from './util.js';
+import { h, uid, safeUrl } from './util.js';
 import { store, findCategory, findGroup, findHolder, findCard, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
 import { openModal, field, imageField } from './modal.js';
 import { PROFILE_DIR_RE } from './chrome-profiles.js';
@@ -151,9 +151,9 @@ function cardForm(card, location, onSave) {
         let u = url.value.trim();
         if (!u) return 'L’adresse est obligatoire.';
         if (!/^[a-z][a-z0-9+.-]*:/i.test(u)) u = 'https://' + u;
-        try { new URL(u); } catch { return 'Adresse invalide.'; }
-        if (/^\s*javascript:/i.test(u)) return 'Adresse refusée.';
-        onSave({ type: 'link', title: t || new URL(u).hostname, url: u, icon: icon.value, badge: badge.value.trim() }, catId, groupId);
+        const safe = safeUrl(u);
+        if (!safe) return 'Adresse refusée : seuls les liens http://, https:// et mailto: sont acceptés.';
+        onSave({ type: 'link', title: t || new URL(safe).hostname || safe, url: safe, icon: icon.value, badge: badge.value.trim() }, catId, groupId);
       }
     },
   });

@@ -35,7 +35,7 @@ export function renderBackground() {
       v.play().catch(() => {});
     } else {
       const div = h('div', { class: 'bg-image' });
-      div.style.backgroundImage = `url("${url.replace(/"/g, '%22')}")`;
+      div.style.backgroundImage = `url("${url.replace(/[\\"\n\r]/g, c => encodeURIComponent(c))}")`;
       holder.replaceChildren(div);
     }
   });
