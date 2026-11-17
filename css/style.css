@@ -111,11 +111,10 @@ body.editing .movable:hover { outline-color: var(--accent); }
 .board-cols { display: flex; justify-content: flex-start; align-items: flex-start; gap: 18px; width: 100%; flex-wrap: wrap; }
 .board-col { display: flex; flex-direction: column; gap: 18px; width: min(100%, 380px); min-height: 40px; border-radius: var(--radius); }
 .add-category { width: min(100%, 380px); }
-.col-drop {
-  justify-content: center; align-items: center; min-height: 56px; border-radius: var(--radius);
-  border: 1px dashed rgba(255, 255, 255, 0.22); color: var(--muted); font-size: .82rem;
-}
-.board-col.drop-end .col-drop { border-color: var(--accent); color: var(--text); background: rgba(110, 168, 254, 0.12); }
+/* Zone de fin de colonne : visible seulement pendant qu'on fait glisser une catégorie. */
+.col-drop { display: none; min-height: 56px; border-radius: var(--radius); border: 1px dashed rgba(255, 255, 255, 0.22); }
+body.cat-dragging .col-drop { display: block; }
+.board-col.drop-end .col-drop { border-color: var(--accent); background: rgba(110, 168, 254, 0.12); }
 body.searching .col-drop { display: none !important; }
 /* Hors édition, une colonne vide ne prend pas de place. */
 body:not(.editing) .board-col:not(:has(.category)) { display: none; }

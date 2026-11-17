@@ -153,10 +153,12 @@ function enableCategoryDrag(section, cat) {
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', cat.name);
     section.classList.add('dragging');
+    document.body.classList.add('cat-dragging');
   });
   section.addEventListener('dragend', () => {
     section.draggable = false;
     section.classList.remove('dragging');
+    document.body.classList.remove('cat-dragging');
     dragId = null;
     clearDropMarks();
   });
@@ -327,7 +329,7 @@ export function renderBoard(root) {
         enableCategoryDrag(sec, cat);
         return sec;
       }),
-      h('div', { class: 'col-drop edit-only', 'aria-hidden': 'true' }, 'Déposer ici'),
+      h('div', { class: 'col-drop', 'aria-hidden': 'true' }),
     );
     enableColumnDrop(el, col);
     return el;
