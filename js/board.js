@@ -235,7 +235,8 @@ function groupTile(cat, group, gi) {
   },
     h('span', { class: 'avatar' }, glyph('folder', 24)),
     h('span', { class: 'card-text' }, h('span', { class: 'card-name' }, group.name)),
-    h('span', { class: 'badge' }, `${n} carte${n > 1 ? 's' : ''}`),
+    // Nombre de cartes : gros chiffre en volume, comme un numéro de maison fixé au mur.
+    h('span', { class: 'group-count', 'aria-label': `${n} carte${n > 1 ? 's' : ''}` }, String(n)),
     h('div', { class: 'edit-controls card-controls' },
       gi > 0 && editButton('left', 'Déplacer avant', () => actions.moveGroup(cat.id, group.id, -1)),
       gi < cat.groups.length - 1 && editButton('right', 'Déplacer après', () => actions.moveGroup(cat.id, group.id, 1)),
