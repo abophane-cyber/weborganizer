@@ -117,7 +117,7 @@ body.cat-dragging .col-drop { display: block; }
 .board-col.drop-end .col-drop { border-color: var(--accent); background: rgba(110, 168, 254, 0.12); }
 body.searching .col-drop { display: none !important; }
 /* Hors édition, une colonne vide ne prend pas de place. */
-body:not(.editing) .board-col:not(:has(.category:not(.docked))) { display: none; }
+body:not(.editing) .board-col:not(:has(.category)) { display: none; }
 
 /* ---- Barre latérale gauche : catégories « en ronds » ---- */
 .dock {
@@ -158,9 +158,23 @@ body.has-dock .top, body.has-dock .board, body.has-dock .page-footer { padding-l
 .dock-item:hover .dock-card, .dock-item:focus-visible .dock-card { opacity: 1; visibility: visible; transform: translate(0, -50%); }
 .dock-name { margin-top: 6px; font-weight: 700; font-size: 1.02rem; white-space: nowrap; }
 .dock-sub { color: var(--muted); font-size: .8rem; white-space: nowrap; }
-/* La catégorie « en ronds » n'apparaît dans la page que pendant l'édition. */
-body:not(.editing) .category.docked { display: none !important; }
-.dock-note { margin: 0 0 10px; font-size: .78rem; color: var(--muted); }
+/* Édition directement dans la barre (Paramètres ouverts) */
+.dock-slot { position: relative; }
+.dock-tool, .dock-delete { display: none; }
+body.editing .dock-tool {
+  display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; cursor: pointer;
+  border: 1px dashed rgba(255, 255, 255, 0.4); background: transparent; color: #fff;
+}
+body.editing .dock-tool:hover { border-color: var(--accent); background: rgba(110, 168, 254, 0.15); }
+body.editing .dock-delete {
+  display: grid; place-items: center; position: absolute; top: -6px; right: -8px; z-index: 2;
+  width: 22px; height: 22px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 2px solid #12151c; background: #3a3f4b; color: #fff;
+}
+body.editing .dock-delete:hover { background: #e5484d; }
+.dock-hint { display: none; margin-top: 4px; font-size: .74rem; color: var(--accent); }
+body.editing .dock-hint { display: block; }
+body.editing .dock-item .dock-avatar { cursor: pointer; }
 
 /* Disposition libre : les catégories sont posées où l'on veut sur un plan. */
 .board.board-free { align-items: stretch; }

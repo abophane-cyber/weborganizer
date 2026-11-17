@@ -113,8 +113,7 @@ function categoryEl(cat, pos) {
   const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
   if (!cat.cards.length && cat.groups.length) direct.classList.add('edit-only-grid');
   const cardCount = cat.cards.length + cat.groups.reduce((n, g) => n + g.cards.length, 0);
-  const docked = cat.display === 'dock';
-  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}${docked ? ' docked' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id } },
+  return h('section', { class: `category${cat.collapsed ? ' collapsed' : ''}`, 'aria-label': cat.name, dataset: { id: cat.id } },
     h('header', { class: 'category-head' },
       iconEl(cat.icon, cat.name, 'category-icon'),
       collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),
@@ -128,7 +127,6 @@ function categoryEl(cat, pos) {
         editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
       ),
     ),
-    docked && h('p', { class: 'dock-note' }, 'Affichée en ronds sur le côté gauche (visible ici seulement pendant l’édition).'),
     direct,
     cat.groups.map((g, gi) => groupEl(cat, g, gi)),
     h('button', { type: 'button', class: 'add-group edit-only', onclick: () => actions.addGroup(cat.id) },
@@ -288,7 +286,7 @@ function renderFree(root, cfg) {
   const canvas = h('div', { class: 'board-canvas' });
   // Catégories sans position : en quinconce, à la suite.
   let auto = 0;
-  for (const cat of cfg.categories) {
+  for (const cat of cfg.categories.filter(c => c.display !== 'dock')) {
     const sec = categoryEl(cat, { free: true });
     const pos = cat.pos || { x: (auto % 3) / 2, y: Math.floor(auto / 3) * 340 };
     if (!cat.pos) auto++;
@@ -316,7 +314,11 @@ function renderFree(root, cfg) {
 }
 
 // ---- Barre latérale : catégories affichées « en ronds sur le côté gauche » ----
-function dockItem(card) {
+// Hors édition : un clic ouvre la carte. En édition (Paramètres ouverts) : un clic la
+// modifie, la corbeille la supprime, « + » en ajoute une, le crayon modifie la catégorie.
+const isEditing = () => document.body.classList.contains('editing');
+
+function dockItem(card, cat, groupId) {
   const isChrome = card.type === 'chrome';
   const url = isChrome ? '' : safeUrl(card.url);
   const valid = isChrome && PROFILE_DIR_RE.test((card.profileDir || '').trim());
@@ -324,23 +326,34 @@ function dockItem(card) {
   const src = isChrome ? card.photo : (card.icon || faviconFor(url));
   const email = url ? gmailInfo(url)?.email || '' : '';
   const name = card.title || email || url || 'Sans titre';
-  const sub = isChrome ? `Profil Chrome · ${card.profileDir || '?'}` : (email || (url ? new URL(url).hostname : ''));
+  let sub = '';
+  try { sub = isChrome ? `Profil Chrome · ${card.profileDir || '?'}` : (email || (url ? new URL(url).hostname : '')); } catch { /* ignore */ }
   const circle = big => h('span', { class: `dock-avatar${big ? ' big' : ''}`, style: color ? { '--card-bg': color } : null },
     iconEl(src, name, isMediaRef(src) ? 'avatar-img' : 'avatar-icon'));
-  return h('a', {
-    class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : (url || null),
-    target: !isChrome && url ? '_blank' : null, rel: 'noopener noreferrer', 'aria-label': name,
-    onclick: isChrome ? e => { e.preventDefault(); openChromeProfile(card); } : null,
-  },
-    circle(false),
-    card.badge && h('span', { class: 'dock-badge' }, card.badge),
-    // Fiche affichée au survol, à droite du rond.
-    h('span', { class: 'dock-card', role: 'tooltip' },
-      circle(true),
-      h('span', { class: 'dock-name' }, name),
-      sub && h('span', { class: 'dock-sub' }, sub),
-      card.badge && h('span', { class: 'badge' }, card.badge),
+  return h('div', { class: 'dock-slot' },
+    h('a', {
+      class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : (url || null),
+      target: !isChrome && url ? '_blank' : null, rel: 'noopener noreferrer', 'aria-label': name,
+      onclick: e => {
+        if (isEditing()) { e.preventDefault(); actions.editCard(cat.id, groupId, card.id); return; }
+        if (isChrome) { e.preventDefault(); openChromeProfile(card); }
+      },
+    },
+      circle(false),
+      card.badge && h('span', { class: 'dock-badge' }, card.badge),
+      // Fiche affichée au survol, à droite du rond.
+      h('span', { class: 'dock-card', role: 'tooltip' },
+        circle(true),
+        h('span', { class: 'dock-name' }, name),
+        sub && h('span', { class: 'dock-sub' }, sub),
+        card.badge && h('span', { class: 'badge' }, card.badge),
+        h('span', { class: 'dock-hint' }, 'Clic : modifier la carte'),
+      ),
     ),
+    h('button', {
+      type: 'button', class: 'dock-delete', title: `Supprimer « ${name} »`, 'aria-label': `Supprimer « ${name} »`,
+      onclick: () => actions.deleteCard(cat.id, groupId, card.id),
+    }, svgIcon('trash', 12)),
   );
 }
 
@@ -348,14 +361,20 @@ function renderDock(cfg) {
   const dock = document.getElementById('dock');
   if (!dock) return;
   const cats = cfg.categories.filter(c => c.display === 'dock');
-  const items = cats.map(cat => [
-    ...cat.cards, ...cat.groups.flatMap(g => g.cards),
-  ]).filter(list => list.length);
-  dock.hidden = items.length === 0;
-  document.body.classList.toggle('has-dock', items.length > 0);
-  dock.replaceChildren(...items.flatMap((list, i) => [
+  dock.hidden = cats.length === 0;
+  document.body.classList.toggle('has-dock', cats.length > 0);
+  dock.replaceChildren(...cats.flatMap((cat, i) => [
     i > 0 && h('span', { class: 'dock-sep', 'aria-hidden': 'true' }),
-    ...list.map(dockItem),
+    h('button', {
+      type: 'button', class: 'dock-tool', title: `Modifier la catégorie « ${cat.name} »`, 'aria-label': `Modifier la catégorie « ${cat.name} »`,
+      onclick: () => actions.editCategory(cat.id),
+    }, svgIcon('edit', 14)),
+    ...cat.cards.map(card => dockItem(card, cat, '')),
+    ...cat.groups.flatMap(g => g.cards.map(card => dockItem(card, cat, g.id))),
+    h('button', {
+      type: 'button', class: 'dock-tool', title: `Ajouter une carte à « ${cat.name} »`, 'aria-label': `Ajouter une carte à « ${cat.name} »`,
+      onclick: () => actions.addCard(cat.id),
+    }, svgIcon('plus', 16)),
   ]).filter(Boolean));
 }
 

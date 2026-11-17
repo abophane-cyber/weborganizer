@@ -144,7 +144,8 @@ export const store = {
 export function columnLayout(cfg) {
   const nCols = Math.min(5, Math.max(1, Number(cfg.theme.columns) || 3));
   const byColumn = Array.from({ length: nCols }, () => []);
-  cfg.categories.forEach((cat, i) => {
+  // Les catégories « en ronds » (barre latérale) ne sont pas dans la page.
+  cfg.categories.filter(cat => cat.display !== 'dock').forEach((cat, i) => {
     const col = Number.isInteger(cat.column) ? Math.min(cat.column, nCols - 1) : i % nCols;
     byColumn[col].push(cat);
   });

@@ -73,7 +73,8 @@ function withColumns(c, mutate) {
   const { byColumn } = columnLayout(c);
   byColumn.forEach((cats, col) => cats.forEach(cat => { cat.column = col; }));
   mutate(byColumn);
-  c.categories = byColumn.flatMap((cats, col) => cats.map(cat => Object.assign(cat, { column: col })));
+  const docked = c.categories.filter(cat => cat.display === 'dock');
+  c.categories = [...byColumn.flatMap((cats, col) => cats.map(cat => Object.assign(cat, { column: col }))), ...docked];
 }
 
 // Place `id` dans la colonne `col`, au-dessus (ou en dessous si `after`) de `targetId`,
