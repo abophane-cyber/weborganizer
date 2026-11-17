@@ -1,6 +1,6 @@
 // Point d'entrée.
 import { store } from './store.js';
-import * as cloud from './pcloud.js';
+import * as cloud from './folder.js';
 import * as sync from './sync.js';
 import { renderBoard } from './board.js';
 import { renderBackground } from './background.js';
@@ -92,22 +92,25 @@ function render() {
 function welcomeBanner() {
   let dismissed = false;
   try { dismissed = localStorage.getItem('wo.welcome.dismissed') === '1'; } catch { /* ignore */ }
-  if (dismissed || cloud.isConnected() || !cloud.isConfigured()) return;
+  if (dismissed || cloud.hasFolder() || !cloud.isConfigured()) return;
   const banner = document.getElementById('banner');
   const close = () => {
     banner.replaceChildren();
     try { localStorage.setItem('wo.welcome.dismissed', '1'); } catch { /* ignore */ }
   };
   banner.replaceChildren(h('div', { class: 'banner' },
-    h('span', {}, 'Sauvegardez votre page et retrouvez-la sur tous vos ordinateurs.'),
-    h('button', { type: 'button', class: 'btn primary', onclick: () => cloud.connect() }, 'Se connecter à pCloud'),
+    h('span', {}, 'Enregistrez votre page dans pCloud Drive pour la retrouver sur tous vos ordinateurs.'),
+    h('button', {
+      type: 'button', class: 'btn primary',
+      onclick: () => cloud.connect().catch(e => { if (e?.name !== 'AbortError') toast(e.message, { kind: 'error' }); }),
+    }, 'Choisir le dossier'),
     h('button', { type: 'button', class: 'btn link-btn', onclick: close }, 'Plus tard'),
   ));
   cloud.onAuthChange(ok => ok && banner.replaceChildren());
 }
 
 async function start() {
-  const redirect = cloud.handleRedirect();
+  await cloud.init();
   await store.load();
   render();
   store.subscribe(render);
@@ -117,13 +120,7 @@ async function start() {
   await sync.init();
   welcomeBanner();
 
-  if (redirect?.error) toast(`Connexion à pCloud refusée ou interrompue (${redirect.error}).`, { kind: 'error' });
-  if (cloud.isConnected()) {
-    cloud.loadAccount()
-      .then(info => redirect?.ok && toast(`pCloud est connecté${info.email ? ` (${info.email})` : ''}.`, { kind: 'ok' }))
-      .catch(() => redirect?.ok && toast('La connexion à pCloud a échoué. Réessayez depuis les Paramètres.', { kind: 'error' }));
-    sync.syncNow();
-  }
+  if (cloud.isConnected()) sync.syncNow();
 
   // Resynchronise quand on revient sur l'onglet (modifications faites ailleurs).
   document.addEventListener('visibilitychange', () => {

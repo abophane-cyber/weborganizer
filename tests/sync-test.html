@@ -3,14 +3,14 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tests synchro (pCloud simulé)</title>
+  <title>Tests synchro (dossier simulé)</title>
   <link rel="stylesheet" href="../css/style.css">
   <script type="importmap">{ "imports": { "../js/app-config.js": "./app-config.test.js" } }</script>
-  <script src="mock-pcloud.js"></script>
+  <script src="mock-folder.js"></script>
   <style>#results { position: fixed; left: 12px; bottom: 12px; z-index: 99; margin: 0; padding: 12px; background: #000c; border-radius: 10px; font: 13px/1.5 monospace; white-space: pre; }</style>
 </head>
 <body>
-  <!-- Page de test : utilise un faux serveur pCloud en mémoire. Ouvrir via http://localhost:8080/tests/sync-test.html -->
+  <!-- Page de test : utilise un faux dossier en mémoire. Ouvrir via http://localhost:8080/tests/sync-test.html -->
   <div id="bg" aria-hidden="true"><div id="bg-media"></div><div id="bg-overlay"></div></div>
   <div id="banner"></div>
   <nav id="dock" class="dock" hidden></nav>
@@ -40,40 +40,38 @@
     await until(() => window.__wo);
     const { store, sync } = window.__wo;
     const M = window.__mock;
-    const root = () => M.findFolder('0', 'WebOrganizer');
+    const configWrites = () => M.writes.filter(n => n === 'config.json').length;
 
     check('statut « Enregistré »', await until(() => sync.getStatus().status === 'saved'));
-    check('1er lancement : la page de départ intacte n’est pas envoyée', await until(() => root()) && !M.findFile(root(), 'config.json'));
+    check('1er lancement : la page de départ intacte n’est pas enregistrée', !M.has('config.json'));
 
     store.update(c => { c.title = 'Titre test'; });
     check('statut « Synchronisation… » juste après une modification', sync.getStatus().status === 'syncing');
-    await until(() => sync.getStatus().status === 'saved' && M.findFile(root(), 'config.json'));
-    const cfgId = M.findFile(root(), 'config.json');
-    const remote = JSON.parse(await M.files[cfgId].data.text());
-    check('modification envoyée sur pCloud (config.json créé)', remote.title === 'Titre test');
+    await until(() => sync.getStatus().status === 'saved' && M.has('config.json'));
+    const remote = JSON.parse(await M.read('config.json'));
+    check('modification enregistrée dans le dossier (config.json)', remote.title === 'Titre test');
     store.update(c => { c.description = 'Deuxième envoi'; });
-    await until(() => !!M.findFile(root(), 'config.backup.json'));
-    check('config.backup.json copié avant l’écriture suivante', !!M.findFile(root(), 'config.backup.json'));
+    await until(() => M.has('config.backup.json'));
+    check('config.backup.json copié avant l’écriture suivante', M.has('config.backup.json'));
     await until(() => sync.getStatus().status === 'saved');
 
-    const before = M.calls.filter(c => c === 'uploadfile').length;
+    const before = configWrites();
     for (let i = 0; i < 5; i++) { store.update(c => { c.description = 'd' + i; }); await wait(30); }
     await wait(80);
     await until(() => sync.getStatus().status === 'saved');
-    check('5 modifications rapides → 1 seul envoi', M.calls.filter(c => c === 'uploadfile').length - before === 1);
+    check('5 modifications rapides → 1 seule écriture', configWrites() - before === 1);
 
-    const newer = { ...remote, title: 'Depuis un autre PC', updatedAt: new Date(Date.now() + 60000).toISOString() };
-    M.putFile(root(), 'config.json', new Blob([JSON.stringify(newer)]));
+    const newer = { ...JSON.parse(await M.read('config.json')), title: 'Depuis un autre PC', updatedAt: new Date(Date.now() + 60000).toISOString() };
+    M.put('config.json', JSON.stringify(newer));   // comme si pCloud Drive l'avait reçu d'un autre ordinateur
     await sync.syncNow();
-    check('version pCloud plus récente → elle l’emporte', store.get().title === 'Depuis un autre PC' && document.getElementById('title').textContent === 'Depuis un autre PC');
+    check('version plus récente dans le dossier → elle l’emporte', store.get().title === 'Depuis un autre PC' && document.getElementById('title').textContent === 'Depuis un autre PC');
 
     const { addMediaFile } = await import('../js/media.js');
     const file = new File([new Uint8Array(1000)], 'fond.mp4', { type: 'video/mp4' });
     const ref = await addMediaFile(file);
     store.update(c => { c.background.src = ref; c.background.kind = 'video'; });
     await until(() => sync.getStatus().status === 'saved' && store.get().media[ref.slice(6)]?.remoteId);
-    const mediaFolder = M.findFolder(root(), 'media');
-    check('vidéo envoyée dans media/', Object.values(M.files).some(f => f.parent === mediaFolder && f.name.endsWith('fond.mp4')));
+    check('vidéo enregistrée dans media/', M.names('media').some(n => n.endsWith('fond.mp4')));
     const v = document.querySelector('.bg-video');
     check('vidéo de fond : autoplay + loop + muted', !!v && v.muted && v.loop && v.autoplay);
 
@@ -82,9 +80,9 @@
     const entries = await readZip(z);
     check('zip : écriture puis relecture', entries.length === 2 && new TextDecoder().decode(entries[0].data) === '{"a":"é"}' && entries[1].data.length === 1000);
 
-    M.authFail = true;
+    M.denyWrites = true;
     store.update(c => { c.title = 'x'; });
-    check('jeton refusé → « Reconnexion à pCloud nécessaire »', await until(() => sync.getStatus().status === 'reauth'));
+    check('accès retiré par le navigateur → « Accès au dossier à autoriser »', await until(() => sync.getStatus().status === 'reauth'));
 
     out.push('', 'Terminé.');
     document.getElementById('results').textContent = out.join('\n');

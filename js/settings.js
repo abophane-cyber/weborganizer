@@ -1,7 +1,7 @@
 // Panneau Paramètres : synchronisation, général, design & fond.
 import { h, svgIcon, toast, formatBytes } from './util.js';
 import { store, isPristine } from './store.js';
-import * as cloud from './pcloud.js';
+import * as cloud from './folder.js';
 import * as sync from './sync.js';
 import { addMediaFile, isMediaRef, mediaInfo } from './media.js';
 import { kindFor } from './background.js';
@@ -54,47 +54,67 @@ function syncSection() {
     const i = sync.getInfo();
     const local = isPristine(c) ? 'page de départ (jamais modifiée)'
       : `« ${c.title || 'sans titre'} », ${c.categories.length} catégorie(s), modifiée le ${fmt(c.updatedAt)}`;
-    const remote = !cloud.isConnected() ? 'non connecté'
+    const remote = !cloud.isConnected() ? 'non relié'
       : i.remoteExists === null ? 'pas encore vérifié'
         : i.remoteExists ? `config.json du ${fmt(i.remoteModified)}` : 'vide (aucune page enregistrée)';
     diag.replaceChildren(
       h('span', {}, `Cette page : ${local}`), h('br'),
-      h('span', {}, `pCloud : ${remote}`),
+      h('span', {}, `Dossier : ${remote}`),
       ...(i.lastSyncAt ? [h('br'), h('span', {}, `Dernière synchro : ${fmt(i.lastSyncAt)}`)] : []),
     );
   };
   const progress = h('p', { class: 'muted small progress-line', hidden: true });
   const actionBtn = h('button', { type: 'button', class: 'btn primary' });
   const syncBtn = h('button', { type: 'button', class: 'btn', onclick: () => sync.syncNow() }, 'Synchroniser maintenant');
+  const changeBtn = h('button', {
+    type: 'button', class: 'btn', onclick: () => pickFolder(),
+  }, 'Changer de dossier');
   const disconnectBtn = h('button', {
     type: 'button', class: 'btn link-btn',
     onclick: () => {
-      if (confirm('Déconnecter pCloud sur cet ordinateur ? Vos données restent sur pCloud et dans le cache local.')) cloud.disconnect();
+      if (confirm('Ne plus synchroniser avec ce dossier sur ce navigateur ? Les fichiers du dossier ne sont pas supprimés.')) cloud.disconnect();
     },
-  }, 'Déconnecter pCloud');
+  }, 'Oublier ce dossier');
+  // Choisir le dossier (clic obligatoire : le navigateur affiche son sélecteur).
+  async function pickFolder() {
+    try {
+      await cloud.connect();
+      toast(`Dossier « ${cloud.folderName()} » relié. Synchronisation en cours…`, { kind: 'ok' });
+    } catch (e) {
+      if (e?.name !== 'AbortError') toast(`Impossible d'utiliser ce dossier : ${e.message}`, { kind: 'error' });
+    }
+  }
 
   const render = ({ status, detail }) => {
     chip.className = `sync-chip sync-${status}`;
     chip.textContent = sync.statusLabel[status] + (detail ? ` — ${detail}` : '');
     document.getElementById('settings-btn').dataset.sync = status;
     const connected = cloud.isConnected();
+    const needsAuth = cloud.hasFolder() && !connected;
     actionBtn.hidden = connected || !cloud.isConfigured();
-    actionBtn.textContent = status === 'reauth' ? 'Se reconnecter à pCloud' : 'Se connecter à pCloud';
+    actionBtn.textContent = needsAuth ? 'Autoriser l’accès au dossier' : 'Choisir le dossier de synchronisation…';
     syncBtn.hidden = !connected;
-    disconnectBtn.hidden = !connected;
+    changeBtn.hidden = !cloud.hasFolder();
+    disconnectBtn.hidden = !cloud.hasFolder();
     account.textContent = !cloud.isConfigured()
-      ? 'pCloud n’est pas encore configuré (Client ID manquant dans js/app-config.js, voir le guide). Vos données sont enregistrées sur cet ordinateur.'
+      ? 'Ce navigateur ne permet pas d’enregistrer dans un dossier : utilisez Chrome ou Edge sur ordinateur. Vos données restent sur cet ordinateur.'
       : connected
-        ? `Connecté${cloud.accountEmail() ? ` : ${cloud.accountEmail()}` : ''}. Dossier pCloud : WebOrganizer`
-        : 'Vos données sont enregistrées sur cet ordinateur. Connectez pCloud pour les sauvegarder et les retrouver ailleurs.';
+        ? `Dossier relié : « ${cloud.folderName()} ». pCloud Drive le synchronise avec vos autres ordinateurs.`
+        : needsAuth
+          ? `Dossier « ${cloud.folderName()} » choisi : Chrome demande de réautoriser l’accès (un clic).`
+          : 'Vos données sont enregistrées dans ce navigateur. Choisissez votre dossier WebOrganizer dans pCloud Drive (ex. P:\\WebOrganizer) pour les sauvegarder et les retrouver sur vos autres ordinateurs.';
   };
-  actionBtn.addEventListener('click', () => cloud.connect());
+  actionBtn.addEventListener('click', async () => {
+    if (cloud.hasFolder() && !cloud.isConnected()) {
+      try { await cloud.reauthorize(); } catch (e) { toast(`Accès refusé : ${e.message}`, { kind: 'error' }); }
+    } else pickFolder();
+  });
   sync.onStatus(s => { render(s); renderDiag(); });
   store.subscribe(renderDiag);
   cloud.onAuthChange(() => render(sync.getStatus()));
   sync.onProgress(p => {
     progress.hidden = !!p.done;
-    progress.textContent = `${p.download ? 'Téléchargement' : 'Envoi vers pCloud'} : ${p.name} — ${Math.round(p.ratio * 100)} %`;
+    progress.textContent = `${p.download ? 'Lecture' : 'Enregistrement dans le dossier'} : ${p.name} — ${Math.round(p.ratio * 100)} %`;
   });
 
   const importInput = h('input', {
@@ -169,7 +189,7 @@ function syncSection() {
     h('div', { class: 'row wrap' }, actionBtn, syncBtn),
     h('div', { class: 'row wrap' }, exportBtn,
       h('button', { type: 'button', class: 'btn', onclick: () => importInput.click() }, 'Importer'), importInput),
-    h('div', { class: 'row' }, disconnectBtn),
+    h('div', { class: 'row wrap' }, changeBtn, disconnectBtn),
   );
 }
 

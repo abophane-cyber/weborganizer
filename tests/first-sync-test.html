@@ -2,14 +2,14 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <title>Tests première connexion (pCloud simulé)</title>
+  <title>Tests première synchro (dossier simulé)</title>
   <link rel="stylesheet" href="../css/style.css">
   <script type="importmap">{ "imports": { "../js/app-config.js": "./app-config.test.js" } }</script>
-  <script src="mock-pcloud.js"></script>
+  <script src="mock-folder.js"></script>
   <style>#results { position: fixed; left: 12px; bottom: 12px; z-index: 99; margin: 0; padding: 12px; background: #000c; border-radius: 10px; font: 13px/1.5 monospace; white-space: pre; }</style>
 </head>
 <body>
-  <!-- Ouvrir avec ?s=A, ?s=B ou ?s=C : chaque scénario part d'un navigateur vierge. -->
+  <!-- Ouvrir avec ?s=A, ?s=B, ?s=C ou ?s=G : chaque scénario part d'un navigateur vierge. -->
   <div id="bg" aria-hidden="true"><div id="bg-media"></div><div id="bg-overlay"></div></div>
   <div id="banner"></div>
   <nav id="dock" class="dock" hidden></nav>
@@ -35,11 +35,10 @@
     const until = async (fn, ms = 5000) => { const t = Date.now(); while (Date.now() - t < ms) { if (await fn()) return true; await wait(40); } return false; };
 
     await new Promise(r => { const q = indexedDB.deleteDatabase('weborganizer'); q.onsuccess = q.onerror = q.onblocked = r; });
-    const { kvSet, mediaPut } = await import('../js/db.js');
+    const { kvSet, mediaPut, mediaGet } = await import('../js/db.js');
     const { defaultConfig } = await import('../js/store.js');
     const M = window.__mock;
-    const rootId = String((await (await fetch('https://eapi.pcloud.com/createfolderifnotexists?path=/WebOrganizer&access_token=TEST')).json()).metadata.folderid);
-    const remoteConfig = async () => { const id = M.findFile(rootId, 'config.json'); return id ? JSON.parse(await M.files[id].data.text()) : null; };
+    const folderConfig = async () => { const t = await M.read('config.json'); return t ? JSON.parse(t) : null; };
 
     const realPage = (title) => {
       const c = defaultConfig();
@@ -51,31 +50,30 @@
     };
 
     if (scenario === 'A') {
-      // pCloud : page de départ intacte (envoyée par un autre profil). Ici : la vraie page.
-      M.putFile(rootId, 'config.json', new Blob([JSON.stringify(defaultConfig())]));
+      // Dossier : page de départ intacte (déposée par un autre profil). Ici : la vraie page.
+      M.put('config.json', JSON.stringify(defaultConfig()));
       await kvSet('config', realPage('Ma vraie page'));
-      await kvSet('syncMeta', { dirty: true, remoteHash: null });
+      await kvSet('syncMeta', { dirty: true, remoteHash: null, v2: true, v3: true });
       await mediaPut('mvid', new Blob(['abc'], { type: 'video/mp4' }));
     } else if (scenario === 'B') {
-      // pCloud : une vraie page (autre ordinateur). Ici : une autre vraie page, jamais synchronisée.
-      const other = realPage('Page de pCloud'); other.updatedAt = '2026-11-17T08:00:00.000Z'; other.media = {}; other.background = { src: '', kind: 'image', overlay: 0.3 };
-      M.putFile(rootId, 'config.json', new Blob([JSON.stringify(other)]));
+      // Dossier : une vraie page (autre ordinateur, avec sa vidéo). Ici : une autre vraie page.
+      const other = realPage('Page du dossier'); other.updatedAt = '2026-11-17T08:00:00.000Z';
+      other.media = { mpc: { name: 'pc.mp4', mime: 'video/mp4', size: 3, remoteId: 'mpc__pc.mp4', addedAt: '2026-11-16T09:00:00.000Z' } };
+      other.background = { src: 'media:mpc', kind: 'video', overlay: 0.3 };
+      M.put('config.json', JSON.stringify(other));
+      M.put('media/mpc__pc.mp4', new Blob(['xyz'], { type: 'video/mp4' }));
       await kvSet('config', realPage('Ma page locale'));
-      await kvSet('syncMeta', { dirty: true, remoteHash: null });
+      await kvSet('syncMeta', { dirty: true, remoteHash: null, v2: true, v3: true });
       await mediaPut('mvid', new Blob(['abc'], { type: 'video/mp4' }));
-    } else if (scenario === 'D' || scenario === 'E' || scenario === 'F') {
-      // Comme le vrai pCloud : lien direct bloqué, gettextfile en erreur.
-      // Navigateur resté bloqué : page de départ et « remoteHash » déjà à jour (ancien défaut).
-      M.blockContent = true;
-      M.textfileError = true;
-      if (scenario === 'E') M.fileopsFail = true;
-      if (scenario === 'F') M.fileopsAuthError = true;
-      const real = realPage('Page de pCloud'); real.media = {}; real.background = { src: '', kind: 'image', overlay: 0.3 };
-      M.putFile(rootId, 'config.json', new Blob([JSON.stringify(real)]));
-      const remoteId = M.findFile(rootId, 'config.json');
-      await kvSet('syncMeta', { dirty: false, remoteHash: String(M.files[remoteId].hash) });
+    } else if (scenario === 'G') {
+      // Page envoyée autrefois par l'API pCloud : médias avec un identifiant numérique.
+      const legacy = realPage('Page migrée');
+      legacy.media.mvid.remoteId = 123456;
+      await kvSet('config', legacy);
+      await kvSet('syncMeta', { dirty: false, remoteHash: '999', v2: true });   // pas de v3
+      await mediaPut('mvid', new Blob(['abc'], { type: 'video/mp4' }));
     } else {
-      // pCloud vide, navigateur neuf (page de départ).
+      // Dossier vide, navigateur neuf (page de départ).
     }
 
     await import('../js/main.js');
@@ -87,46 +85,36 @@
 
     if (scenario === 'A') {
       check('la vraie page reste affichée', store.get().title === 'Ma vraie page');
-      check('la vraie page est envoyée dans pCloud', (await remoteConfig())?.title === 'Ma vraie page');
-      check('la vidéo est envoyée dans media/', Object.values(M.files).some(f => f.name.endsWith('cafe.mp4')));
+      check('la vraie page est enregistrée dans le dossier', (await folderConfig())?.title === 'Ma vraie page');
+      check('la vidéo est enregistrée dans media/', M.names('media').some(n => n.endsWith('cafe.mp4')));
     } else if (scenario === 'B') {
-      check('première connexion : la version pCloud s’affiche', store.get().title === 'Page de pCloud');
+      check('première synchro : la page du dossier s’affiche', store.get().title === 'Page du dossier');
+      check('… avec sa vidéo lue dans le dossier', await until(async () => !!(await mediaGet('mpc')), 3000));
       const aside = await sync.getAside();
       check('la page locale est mise de côté', aside?.title === 'Ma page locale');
       window.__wo.toggleSettings(true);
       await wait(300);
-      check('le bouton « Restaurer » est proposé', [...document.querySelectorAll('.aside-box button')].some(b => b.textContent === 'Restaurer cette version'));
       window.confirm = () => true;
-      [...document.querySelectorAll('.aside-box button')].find(b => b.textContent === 'Restaurer cette version').click();
+      const btn = [...document.querySelectorAll('.aside-box button')].find(b => b.textContent === 'Restaurer cette version');
+      check('le bouton « Restaurer » est proposé', !!btn);
+      btn?.click();
       await wait(200);
       check('après « Restaurer » : la page locale revient', store.get().title === 'Ma page locale');
-      await until(async () => (await remoteConfig())?.title === 'Ma page locale', 5000);
-      check('… et elle est envoyée dans pCloud', (await remoteConfig())?.title === 'Ma page locale');
-      check('… avec sa vidéo (fichier local conservé)', Object.values(M.files).some(f => f.name.endsWith('cafe.mp4')));
-      check('le bouton « Restaurer » disparaît', document.querySelector('.aside-box').hidden);
-    } else if (scenario === 'D') {
-      check('la page de pCloud est récupérée (nouveau téléchargement forcé)', store.get().title === 'Page de pCloud');
-      check('… par file_open / file_pread', M.ways.includes('fileops'));
-      check('statut « Enregistré »', sync.getStatus().status === 'saved');
-    } else if (scenario === 'F') {
-      await until(() => sync.getStatus().status === 'error', 5000);
-      check('statut « Erreur » (pas « Reconnexion »)', sync.getStatus().status === 'error');
-      check('toujours connecté à pCloud', window.__wo.cloud.isConnected());
-      check('l\u2019erreur cite la réponse de file_open', /Log in required/.test(sync.getStatus().detail));
-    } else if (scenario === 'E') {
-      await until(() => sync.getStatus().status === 'error', 5000);
-      const st = sync.getStatus();
-      check('statut « Erreur de synchronisation »', st.status === 'error');
-      check('l\u2019erreur indique les 3 voies essayées', /lien direct/.test(st.detail) && /gettextfile/.test(st.detail) && /file_open/.test(st.detail));
-      check('la page locale n\u2019est PAS remplacée par une erreur', store.get().title === 'WebOrganizer' && store.get().categories.length === 2);
+      await until(async () => (await folderConfig())?.title === 'Ma page locale', 5000);
+      check('… et elle est enregistrée dans le dossier', (await folderConfig())?.title === 'Ma page locale');
+      check('… avec sa vidéo', M.names('media').some(n => n.endsWith('cafe.mp4')));
+    } else if (scenario === 'G') {
+      await until(async () => !!(await folderConfig()), 4000);
+      check('la page est enregistrée dans le dossier', (await folderConfig())?.title === 'Page migrée');
+      check('la vidéo envoyée autrefois par l’API est réécrite dans media/', M.names('media').some(n => n.endsWith('cafe.mp4')));
+      check('son identifiant pointe maintenant vers le fichier du dossier', typeof store.get().media.mvid.remoteId === 'string');
     } else {
       check('statut « Enregistré »', sync.getStatus().status === 'saved');
-      check('la page de départ n’est PAS envoyée dans pCloud', !(await remoteConfig()));
+      check('la page de départ n’est PAS enregistrée dans le dossier', !(await folderConfig()));
       store.update(c => { c.title = 'Première modif'; });
-      await until(async () => (await remoteConfig())?.title === 'Première modif', 5000);
-      check('dès la 1re modification, la page est envoyée', (await remoteConfig())?.title === 'Première modif');
+      await until(async () => (await folderConfig())?.title === 'Première modif', 5000);
+      check('dès la 1re modification, la page est enregistrée', (await folderConfig())?.title === 'Première modif');
     }
-    localStorage.removeItem('wo.pcloud.auth');
     out.push('', 'Terminé.');
     document.getElementById('results').textContent = out.join('\n');
     window.__testsDone = out;

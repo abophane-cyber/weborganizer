@@ -3,7 +3,7 @@
 import { mediaGet, mediaPut } from './db.js';
 import { store } from './store.js';
 import { uid } from './util.js';
-import * as cloud from './pcloud.js';
+import * as cloud from './folder.js';
 
 const urls = new Map();     // id -> objectURL
 const inflight = new Map(); // id -> Promise<objectURL|null>
@@ -40,19 +40,11 @@ export function resolve(ref) {
     try { blob = await mediaGet(id); } catch { /* cache indisponible */ }
     if (!blob) {
       const info = store.get().media[id];
-      if (info?.remoteId && cloud.isConnected() && navigator.onLine) {
+      if (info?.remoteId && cloud.isConnected()) {
         try {
-          blob = await cloud.downloadMedia(info.remoteId, info.size);
+          blob = await cloud.downloadMedia(info.remoteId, info.size, id);
           await mediaPut(id, blob);
-        } catch (e) {
-          console.warn('Média non téléchargé', id, e);
-          // Plan B : afficher directement depuis pCloud (sans copie locale).
-          try {
-            const link = await cloud.mediaLink(info.remoteId);
-            urls.set(id, link);
-            return link;
-          } catch (e2) { console.warn('Lien pCloud indisponible', id, e2); }
-        }
+        } catch (e) { console.warn('Média non lu dans le dossier', id, e); }
       }
     }
     if (!blob) return null;

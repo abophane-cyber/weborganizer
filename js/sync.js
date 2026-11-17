@@ -4,7 +4,7 @@
 //   la version la plus récente (champ updatedAt) l'emporte.
 import { kvGet, kvSet, mediaGet, mediaPut, mediaDelete, mediaKeys } from './db.js';
 import { store, isPristine } from './store.js';
-import * as cloud from './pcloud.js';
+import * as cloud from './folder.js';
 import { SAVE_DELAY } from './app-config.js';
 
 // status : saved | syncing | offline | local | reauth | error
@@ -35,7 +35,7 @@ async function saveMeta() {
 }
 
 function idleStatus() {
-  if (!cloud.isConfigured() || !cloud.isConnected()) return 'local';
+  if (!cloud.isConfigured() || !cloud.isConnected()) return cloud.hasFolder() ? 'reauth' : 'local';
   if (!navigator.onLine) return 'offline';
   return meta.dirty ? 'syncing' : 'saved';
 }
@@ -45,6 +45,16 @@ export async function init() {
   // Version 2 : un défaut pouvait faire prendre une erreur pCloud pour une page vide,
   // puis croire la page à jour. On force un nouveau téléchargement, une seule fois.
   if (!meta.v2) { meta = { ...meta, remoteHash: null, v2: true }; await saveMeta(); }
+  // Version 3 : passage de l'API pCloud au dossier pCloud Drive. Tout est revérifié une
+  // fois, et les médias présents dans ce navigateur sont réécrits dans le dossier.
+  if (!meta.v3) {
+    meta = { ...meta, remoteHash: null, v3: true };
+    await saveMeta();
+    let local = new Set();
+    try { local = new Set(await mediaKeys()); } catch { /* ignore */ }
+    const legacy = Object.entries(store.get().media).filter(([id, m]) => typeof m.remoteId === 'number' && local.has(id));
+    if (legacy.length) store.update(c => { for (const [id] of legacy) c.media[id].remoteId = null; }, { quiet: true });
+  }
   store.subscribe(e => {
     if (e.type !== 'change' || !e.local) return;
     meta.dirty = true;
@@ -52,14 +62,17 @@ export async function init() {
     if (!e.quiet) schedule();
   });
   addEventListener('online', () => syncNow());
+  // Le dossier est local : le relire toutes les minutes ne coûte presque rien, et
+  // montre vite une modification faite sur un autre ordinateur.
+  setInterval(() => { if (document.visibilityState === 'visible' && cloud.isConnected() && !running) syncNow(); }, 60e3);
   addEventListener('offline', () => setStatus('offline'));
-  cloud.onAuthChange(ok => (ok ? syncNow() : setStatus(meta.dirty || status !== 'local' ? 'reauth' : 'local')));
+  cloud.onAuthChange(ok => (ok ? syncNow() : setStatus(cloud.hasFolder() ? 'reauth' : 'local')));
   setStatus(idleStatus());
 }
 
 export function schedule() {
   clearTimeout(timer);
-  if (!cloud.isConnected()) return setStatus('local');
+  if (!cloud.isConnected()) return setStatus(cloud.hasFolder() ? 'reauth' : 'local');
   if (!navigator.onLine) return setStatus('offline');
   setStatus('syncing');
   timer = setTimeout(syncNow, SAVE_DELAY);
@@ -85,7 +98,7 @@ export function syncNow() {
 }
 
 async function doSync() {
-  if (!cloud.isConfigured() || !cloud.isConnected()) return setStatus('local');
+  if (!cloud.isConfigured() || !cloud.isConnected()) return setStatus(cloud.hasFolder() ? 'reauth' : 'local');
   if (!navigator.onLine) return setStatus('offline');
   setStatus('syncing');
 
@@ -110,7 +123,7 @@ async function doSync() {
       // Toute page locale réelle remplacée est mise de côté (bouton « Restaurer »).
       if (!isPristine(local) && local.updatedAt !== remoteCfg.updatedAt) await setAside(local);
       store.replace(remoteCfg);
-      meta = { dirty: false, remoteHash, v2: true };
+      meta = { dirty: false, remoteHash, v2: true, v3: true };
       await saveMeta();
       await downloadMissingMedia();
       info.lastSyncAt = new Date().toISOString();
@@ -207,7 +220,7 @@ async function downloadMissingMedia() {
     if (local.has(id) || !info.remoteId) continue;
     try {
       emitProgress({ id, name: info.name, ratio: 0, download: true });
-      const blob = await cloud.downloadMedia(info.remoteId, info.size);
+      const blob = await cloud.downloadMedia(info.remoteId, info.size, id);
       await mediaPut(id, blob);
       emitProgress({ id, name: info.name, ratio: 1, done: true, download: true });
       got = true;
@@ -223,6 +236,6 @@ export const statusLabel = {
   syncing: 'Synchronisation…',
   offline: 'Hors ligne',
   local: 'Local uniquement',
-  reauth: 'Reconnexion à pCloud nécessaire',
+  reauth: 'Accès au dossier à autoriser',
   error: 'Erreur de synchronisation',
 };

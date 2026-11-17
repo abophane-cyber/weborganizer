@@ -74,38 +74,37 @@ Pour publier une modification plus tard : `git add .`, puis `git commit -m "…"
 
 ---
 
-## 2. Créer l'application pCloud
+## 2. Synchroniser avec pCloud Drive
 
-L'application a besoin d'un **Client ID** pCloud. Il n'est pas secret : il peut figurer
-dans le code public. **N'utilisez jamais le « Client secret »**, la page n'en a pas besoin.
+La page enregistre ses données dans **un dossier de l'ordinateur** que vous choisissez une
+fois. En le plaçant dans **pCloud Drive** (lecteur `P:`), c'est le logiciel pCloud Drive qui
+le synchronise avec pCloud et avec vos autres ordinateurs. La page n'utilise pas l'API
+pCloud (qui interdit à une page web de relire les fichiers) : aucun Client ID n'est nécessaire.
 
-1. Connectez-vous à pCloud dans votre navigateur, puis ouvrez
-   <https://docs.pcloud.com/my_apps/> (*My applications*).
-2. **Create new app** (*Nouvelle application*) :
-   - *Name* : `WebOrganizer`
-   - *Access* : si on vous propose un **dossier privé** (« Private folder » / dossier
-     dans *Applications*), choisissez-le : l'application n'aura alors accès qu'à son
-     propre dossier, et pas au reste de votre pCloud. Sinon, choisissez l'accès aux fichiers.
-3. Dans les réglages de l'application, ajoutez ces deux **Redirect URIs** (exactement,
-   avec la barre oblique finale) :
-   - `https://abophane-cyber.github.io/weborganizer/`
-   - `http://localhost:8080/`  (pour les tests sur votre ordinateur)
-4. Copiez le **Client ID**.
-5. Ouvrez `js/app-config.js` et remplacez `COLLER_ICI_VOTRE_CLIENT_ID` par ce Client ID.
-6. Publiez : `git add .`, puis `git commit -m "Client ID pCloud"`, puis `git push`.
+Navigateur requis : **Chrome ou Edge sur ordinateur**.
 
-### Première connexion
+### Sur le premier ordinateur (celui qui contient votre page)
 
-1. Ouvrez **https://abophane-cyber.github.io/weborganizer/**.
-2. Cliquez sur **Se connecter à pCloud** (bandeau en haut, ou ⚙ Paramètres → Synchronisation).
-3. pCloud demande d'autoriser *WebOrganizer* : **Autoriser**. Vous revenez sur la page.
-4. Le dossier **WebOrganizer** est créé dans votre pCloud avec `config.json`,
-   `config.backup.json` et `media/`. Si vous avez choisi le dossier privé, il se trouve
-   dans le dossier **Applications** de pCloud.
+1. Installez **pCloud Drive** si ce n'est pas fait, et connectez-vous.
+2. Dans l'Explorateur, créez le dossier **`P:\WebOrganizer`**.
+3. Ouvrez le site → ⚙ → **Synchronisation** → **Choisir le dossier de synchronisation…**
+4. Sélectionnez `P:\WebOrganizer` → **Sélectionner le dossier**, puis acceptez quand Chrome
+   demande l'autorisation de **modifier** les fichiers (cochez « Autoriser à chaque visite »
+   si Chrome le propose).
+5. Le témoin passe à **« Enregistré »** : `config.json` et `media/` apparaissent dans le dossier.
 
-Le jeton pCloud n'expire pas : vous restez connecté d'une visite à l'autre sur cet
-ordinateur. Pour couper l'accès : ⚙ → **Déconnecter pCloud**, ou retirez l'application
-dans les réglages de votre compte pCloud.
+### Sur les autres ordinateurs / profils Chrome
+
+1. Attendez que pCloud Drive ait synchronisé `P:\WebOrganizer`.
+2. Ouvrez le site → ⚙ → **Choisir le dossier de synchronisation…** → `P:\WebOrganizer`.
+3. La page enregistrée apparaît (une page de départ jamais modifiée n'écrase jamais
+   une vraie page ; une page locale remplacée reste récupérable avec **« Restaurer »**).
+
+Ensuite, chaque modification est écrite dans le dossier 1,5 s après, et chaque ordinateur
+relit le dossier à l'ouverture, au retour sur l'onglet et toutes les minutes.
+
+Si Chrome affiche **« Accès au dossier à autoriser »**, cliquez simplement sur
+**« Autoriser l'accès au dossier »** (un clic).
 
 ---
 
