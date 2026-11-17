@@ -194,7 +194,7 @@ body.editing .dock-item .dock-avatar { cursor: pointer; }
    (poignée en haut à gauche en mode édition). */
 .category.bare {
   position: relative; padding: 0; background: none; border: 0; backdrop-filter: none; box-shadow: none;
-  width: calc((100% - 18px) / 2); --bare-h: 150px;
+  width: calc((100% - 18px) / 2);
 }
 .board-canvas > .category.bare { --cat-w: calc((min(100%, 380px) - 18px) / 2); }
 .category.bare .category-head { display: none; }
@@ -207,7 +207,10 @@ body.editing .category.bare .edit-controls { padding: 2px; border-radius: 8px; b
 .category.bare .card.tile {
   flex-direction: column; justify-content: center; gap: 10px; text-align: center;
   min-height: var(--bare-h); padding: 14px 12px; border-radius: var(--radius);
+  /* Liseré : la couleur de la carte, en plus foncé */
+  border: 2px solid color-mix(in srgb, var(--card-bg, #3a4050) 55%, #000);
 }
+.category.bare .card.colored { border-color: color-mix(in srgb, var(--card-bg) 55%, #000); }
 .category.bare .card-text { align-items: center; flex: none; }
 .category.bare .avatar { width: 52px; height: 52px; }
 .category.bare .avatar-icon { width: 30px; height: 30px; }
@@ -240,6 +243,8 @@ body.editing .board-canvas .drag-handle { cursor: move; }
 /* Glisser-déposer des catégories */
 .drag-handle { display: grid; place-items: center; width: 22px; height: 26px; cursor: grab; color: var(--muted); border-radius: 6px; touch-action: none; }
 .drag-handle:hover { color: var(--text); background: rgba(255, 255, 255, 0.1); }
+/* Ombre portée en bas à droite (avant les indicateurs de dépôt, qui la remplacent) */
+.category { box-shadow: 5px 6px 14px rgba(0, 0, 0, 0.45); }
 .category.dragging { opacity: .45; }
 .category.drop-before { box-shadow: 0 -5px 0 var(--accent); }
 .category.drop-after { box-shadow: 0 5px 0 var(--accent); }
@@ -249,7 +254,11 @@ body.editing .board-canvas .drag-handle { cursor: move; }
   border-radius: var(--radius);
   padding: 14px; backdrop-filter: blur(12px);
   min-width: 0;
+  /* Hauteur d'une carte seule : une catégorie dépliée n'est jamais plus basse,
+     elles s'alignent côte à côte */
+  --bare-h: 150px; min-height: var(--bare-h);
 }
+.category.collapsed { min-height: 0; }
 /* Catégorie : grand cadre, bande de couleur à gauche, titre souligné */
 .category.tinted { background: color-mix(in srgb, var(--cat-color) 55%, rgba(18, 21, 28, var(--panel-alpha))); }
 .category-head {
@@ -370,6 +379,7 @@ body.searching .collapsed-count { display: none !important; }
   margin-top: 12px; padding: 8px 10px 10px; border-radius: 10px;
   background: rgba(255, 255, 255, 0.045); border: 1px solid rgba(255, 255, 255, 0.09);
   border-left: 3px solid var(--group-color, rgba(255, 255, 255, 0.3));
+  box-shadow: 3px 4px 10px rgba(0, 0, 0, 0.35);
 }
 .group.tinted { background: color-mix(in srgb, var(--group-color) 40%, transparent); }
 .group-head { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; min-height: 26px; }
