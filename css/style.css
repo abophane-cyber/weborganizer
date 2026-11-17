@@ -1064,3 +1064,18 @@ body .cat-view .view-groups > .card.group-tile:hover {
   box-shadow: none;
 }
 .cat-view .group-tile .badge { background: rgba(255, 255, 255, 0.16); color: #fff; }
+/* Nombre de cartes de la sous-catégorie, en relief dans son rond :
+   chiffre clair éclairé par le haut, ombre portée en bas, rond légèrement bombé. */
+.cat-view .group-tile .group-count {
+  width: 58px; height: 58px;
+  font-size: 1.7rem; font-weight: 800; line-height: 1; letter-spacing: -.02em;
+  color: rgba(255, 255, 255, 0.95);
+  text-shadow: 0 -1px 0 rgba(255, 255, 255, 0.55), 0 2px 0 rgba(0, 0, 0, 0.35), 0 4px 8px rgba(0, 0, 0, 0.35);
+  background: radial-gradient(circle at 35% 28%, rgba(255, 255, 255, 0.32), rgba(255, 255, 255, 0.06) 62%, rgba(0, 0, 0, 0.10));
+  box-shadow: inset 0 2px 2px rgba(255, 255, 255, 0.35), inset 0 -3px 5px rgba(0, 0, 0, 0.25), 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+/* Nom de la sous-catégorie toujours en blanc sur le verre, même sur les teintes
+   claires de la charte « Nature » (qui passent le texte des cartes en brun foncé). */
+body .cat-view .cards.view-groups > .card.group-tile.tile:nth-child(n) {
+  color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
+}
