@@ -1095,3 +1095,23 @@ body .cat-view .cards > .card.group-tile {
     calc(var(--thick) + 4px) calc(var(--thick) + 6px) 16px rgba(0, 0, 0, 0.35) !important;
 }
 body .cat-view .cards > .card.group-tile:active:not(.tile-dragging) { transform: translate(4px, 4px) !important; --thick: 2px; }
+/* Catégories sur la page : même tranche que les sous-catégories, en biais en bas et
+   à droite, douce comme un coussin. --cb : teinte de base de la catégorie. */
+body .board .category.closed:not(.bare) {
+  --cb: #2e3442;
+  --thick: 6px;
+  --t: calc(var(--thick) / 4);
+  --e1: color-mix(in srgb, var(--cb) 80%, #000);
+  --e2: color-mix(in srgb, var(--cb) 68%, #000);
+  --bevel: inset 2px 3px 6px rgba(255, 255, 255, 0.16), inset -3px -4px 10px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--bevel),
+    var(--t) var(--t) 1px var(--e1),
+    calc(var(--t) * 2) calc(var(--t) * 2) 1.5px var(--e1),
+    calc(var(--t) * 3) calc(var(--t) * 3) 2px var(--e2),
+    var(--thick) var(--thick) 3px var(--e2),
+    var(--lift) !important;
+  border-color: color-mix(in srgb, var(--cb) 60%, rgba(255, 255, 255, 0.25));
+}
+body .board .category.closed.tinted:not(.bare) { --cb: var(--cat-color); }
+body.palette-nature .board .category.closed:not(.tinted):not(.bare) { --cb: var(--nat-tone, var(--nat-sage)); }
+body:not(.editing) .board .category.closed:not(.bare):active { transform: translate(4px, 4px); --thick: 2px; }
