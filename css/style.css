@@ -867,3 +867,33 @@ body.editing .top .fullscreen-btn { display: none; }
 /* Fenêtre météo : liens vers Météo-France */
 .wx-links { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
 .wx-links .btn { text-decoration: none; color: var(--text); }
+
+/* ---- Épaisseur des pavés : tranche plus foncée sous le bord + léger biseau ----
+   Cartes, catégories et sous-catégories ont l'air de plaques posées sur le fond.
+   L'ombre est composée de variables : chaque état (survol, dépôt…) change --lift,
+   la tranche (--thick / --edge-c) reste toujours là. */
+.card, .group, .category:not(.bare) {
+  --thick: 6px;
+  --edge-c: rgba(0, 0, 0, 0.5);
+  --bevel: inset 0 2px 0 rgba(255, 255, 255, 0.22), inset 2px 0 0 rgba(255, 255, 255, 0.07),
+           inset -2px 0 0 rgba(0, 0, 0, 0.14), inset 0 -2px 0 rgba(0, 0, 0, 0.22);
+  --lift: 3px 9px 16px rgba(0, 0, 0, 0.4);
+  box-shadow: var(--bevel), 0 var(--thick) 0 var(--edge-c), var(--lift) !important;
+}
+.category:not(.bare) { --thick: 7px; }
+.group { --thick: 5px; }
+/* La tranche reprend la couleur du pavé, en plus foncé */
+.card.colored { --edge-c: color-mix(in srgb, var(--card-bg) 50%, #000); }
+.category.tinted { --edge-c: color-mix(in srgb, var(--cat-color) 45%, #000); }
+.group.tinted { --edge-c: color-mix(in srgb, var(--group-color) 45%, #000); }
+body.palette-nature .card:not(.colored),
+body.palette-nature .group:not(.tinted),
+body.palette-nature .category.closed:not(.tinted) { --edge-c: color-mix(in srgb, var(--nat-tone, var(--nat-sage)) 50%, #000); }
+body.palette-nature .category:not(.closed):not(.tinted):not(.bare) { --edge-c: color-mix(in srgb, var(--nat-pine) 50%, #000); }
+/* Survol : le pavé se soulève ; clic : il s'enfonce dans sa tranche */
+.card:hover, .category.closed:hover { --lift: 4px 14px 22px rgba(0, 0, 0, 0.45); }
+.card:active { transform: translateY(3px) !important; --thick: 2px; }
+/* Indicateurs de glisser-déposer et déplacement : gardent la priorité */
+.category.drop-before, body.palette-nature .category.drop-before { --lift: 0 -5px 0 var(--accent); }
+.category.drop-after, body.palette-nature .category.drop-after { --lift: 0 11px 0 var(--accent); }
+.board-canvas > .category.moving { --lift: 0 16px 40px rgba(0, 0, 0, 0.55); }
