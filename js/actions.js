@@ -60,6 +60,18 @@ export function toggleCategory(id) {
 export function toggleGroup(catId, groupId) {
   store.update(() => { const g = findGroup(catId, groupId); g.collapsed = !g.collapsed; });
 }
+// ---- Barre « en ronds » : ordre des catégories (dans la liste générale) ----
+export function moveDocked(id, dir) {
+  store.update(c => {
+    const docked = c.categories.map((cat, i) => ({ cat, i })).filter(x => x.cat.display === 'dock');
+    const k = docked.findIndex(x => x.cat.id === id);
+    const other = docked[k + dir];
+    if (k < 0 || !other) return;
+    const a = docked[k].i, b = other.i;
+    [c.categories[a], c.categories[b]] = [c.categories[b], c.categories[a]];
+  });
+}
+
 // ---- Disposition libre ----
 export function setCategoryPosition(id, pos) {
   store.update(() => { const cat = findCategory(id); if (cat) cat.pos = { x: pos.x, y: pos.y }; });

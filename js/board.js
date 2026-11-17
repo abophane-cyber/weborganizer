@@ -363,8 +363,18 @@ function renderDock(cfg) {
   const cats = cfg.categories.filter(c => c.display === 'dock');
   dock.hidden = cats.length === 0;
   document.body.classList.toggle('has-dock', cats.length > 0);
-  dock.replaceChildren(...cats.flatMap((cat, i) => [
-    i > 0 && h('span', { class: 'dock-sep', 'aria-hidden': 'true' }),
+  // Une barre arrondie par catégorie, séparées par un espace ; ▲ ▼ changent leur ordre.
+  dock.replaceChildren(...cats.map((cat, i) => h('div', { class: 'dock-group', 'aria-label': cat.name, role: 'group' },
+    h('div', { class: 'dock-order' },
+      i > 0 && h('button', {
+        type: 'button', class: 'dock-mini', title: `Monter « ${cat.name} »`, 'aria-label': `Monter « ${cat.name} »`,
+        onclick: () => actions.moveDocked(cat.id, -1),
+      }, svgIcon('up', 12)),
+      i < cats.length - 1 && h('button', {
+        type: 'button', class: 'dock-mini', title: `Descendre « ${cat.name} »`, 'aria-label': `Descendre « ${cat.name} »`,
+        onclick: () => actions.moveDocked(cat.id, 1),
+      }, svgIcon('down', 12)),
+    ),
     h('button', {
       type: 'button', class: 'dock-tool', title: `Modifier la catégorie « ${cat.name} »`, 'aria-label': `Modifier la catégorie « ${cat.name} »`,
       onclick: () => actions.editCategory(cat.id),
@@ -375,7 +385,7 @@ function renderDock(cfg) {
       type: 'button', class: 'dock-tool', title: `Ajouter une carte à « ${cat.name} »`, 'aria-label': `Ajouter une carte à « ${cat.name} »`,
       onclick: () => actions.addCard(cat.id),
     }, svgIcon('plus', 16)),
-  ]).filter(Boolean));
+  )));
 }
 
 export function renderBoard(root) {

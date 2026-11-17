@@ -122,13 +122,25 @@ body:not(.editing) .board-col:not(:has(.category)) { display: none; }
 /* ---- Barre latérale gauche : catégories « en ronds » ---- */
 .dock {
   position: fixed; left: 12px; top: 50%; transform: translateY(-50%); z-index: 15;
+  display: flex; flex-direction: column; align-items: center; gap: 16px;
+  max-height: calc(100vh - 32px); overflow: visible;
+}
+/* Une barre arrondie par catégorie, séparées par un espace */
+.dock-group {
   display: flex; flex-direction: column; align-items: center; gap: 12px;
-  padding: 12px 8px; border-radius: 999px; max-height: calc(100vh - 32px); overflow: visible;
+  padding: 12px 8px; border-radius: 999px;
   background: rgba(18, 21, 28, 0.62); border: 1px solid var(--border);
   backdrop-filter: blur(12px); box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
+.dock-order { display: none; }
+body.editing .dock-order { display: flex; gap: 4px; }
+body.editing .dock-order:empty { display: none; }
+.dock-mini {
+  display: grid; place-items: center; width: 22px; height: 22px; padding: 0; border-radius: 50%; cursor: pointer;
+  border: 1px solid rgba(255, 255, 255, 0.35); background: transparent; color: #fff;
+}
+.dock-mini:hover { border-color: var(--accent); background: rgba(110, 168, 254, 0.18); }
 body.has-dock .top, body.has-dock .board, body.has-dock .page-footer { padding-left: 92px; }
-.dock-sep { width: 26px; height: 1px; background: rgba(255, 255, 255, 0.18); }
 .dock-item { position: relative; display: block; text-decoration: none; color: #fff; border-radius: 50%; }
 .dock-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .dock-avatar {
