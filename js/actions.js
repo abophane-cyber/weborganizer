@@ -277,8 +277,26 @@ function cardForm(card, location, onSave) {
   useLinkColor.addEventListener('change', syncLinkColor);
   syncLinkColor();
 
+  // Ouvrir le lien dans un profil Chrome précis (ex. la boîte Gmail de ce profil).
+  const profiles = [];
+  for (const cat of store.get().categories) {
+    for (const p of [...cat.cards, ...cat.groups.flatMap(g => g.cards)]) {
+      if (p.type === 'chrome' && PROFILE_DIR_RE.test(p.profileDir || '') && !profiles.some(x => x.dir === p.profileDir)) {
+        profiles.push({ dir: p.profileDir, name: p.title });
+      }
+    }
+  }
+  const openIn = h('select', {},
+    h('option', { value: '' }, 'Non : dans l’onglet actuel'),
+    profiles.map(p => h('option', { value: p.dir, selected: card.openIn === p.dir }, `${p.name} (${p.dir})`)),
+    card.openIn && !profiles.some(p => p.dir === card.openIn) && h('option', { value: card.openIn, selected: true }, card.openIn),
+  );
+
   const linkFields = h('div', { class: 'field-group' },
     field('Adresse (URL)', url, 'Pour une boîte Gmail, tapez simplement l’adresse e-mail (ex. prenom.nom@gmail.com).'),
+    field('Ouvrir dans le profil Chrome', openIn,
+      'Pour Gmail : choisissez le profil où ce compte est connecté, la boîte s’y ouvrira directement. '
+      + 'Nécessite le protocole chromeprofile:// installé (version avec adresse).'),
     icon.el, linkColorRow);
   // Si c'est un lien Gmail déjà construit, on réaffiche l'adresse e-mail pour la modification.
   const existingEmail = gmailAddressFrom(card.url);
@@ -318,7 +336,11 @@ function cardForm(card, location, onSave) {
         let u = url.value.trim();
         if (!u) return 'L’adresse est obligatoire.';
         if (useLinkColor.checked && !linkColor.valid) return 'Code couleur invalide : utilisez le format #RRGGBB (ex. #6B3A4A).';
-        const extra = { icon: icon.value, badge: badge.value.trim(), ...(useLinkColor.checked ? { color: linkColor.value } : {}) };
+        const extra = {
+          icon: icon.value, badge: badge.value.trim(),
+          ...(useLinkColor.checked ? { color: linkColor.value } : {}),
+          ...(openIn.value ? { openIn: openIn.value } : {}),
+        };
         if (EMAIL_RE.test(u)) {
           // Adresse e-mail : lien vers cette boîte Gmail précise.
           onSave({ type: 'link', title: t || u, url: gmailUrl(u), ...extra }, catId, groupId);

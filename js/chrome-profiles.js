@@ -4,11 +4,13 @@ import { INSTALLER_URL } from './app-config.js';
 
 export const PROFILE_DIR_RE = /^[A-Za-z0-9 ]{1,64}$/;
 
-export function profileUrl(dir) {
-  return 'chromeprofile://' + encodeURIComponent(dir.trim());
+// chromeprofile://<profil>[/<adresse https encodée>] — l'adresse s'ouvre dans ce profil.
+export function profileUrl(dir, url = '') {
+  return 'chromeprofile://' + encodeURIComponent(dir.trim()) + (url ? '/' + encodeURIComponent(url) : '');
 }
 
-export function openChromeProfile(card) {
+// card : { title, profileDir } ; url : adresse à ouvrir dans ce profil (facultatif).
+export function openChromeProfile(card, url = '') {
   const dir = (card.profileDir || '').trim();
   if (!PROFILE_DIR_RE.test(dir)) {
     toast(`La carte « ${card.title} » n'a pas de dossier de profil valide (ex. Default, Profile 1). Ouvrez les Paramètres puis modifiez la carte.`, { kind: 'warn', timeout: 7000 });
@@ -22,7 +24,7 @@ export function openChromeProfile(card) {
   window.addEventListener('blur', onLeave, { once: true });
   document.addEventListener('visibilitychange', onLeave, { once: true });
 
-  window.location.href = profileUrl(dir);
+  window.location.href = profileUrl(dir, url);
 
   setTimeout(() => {
     window.removeEventListener('blur', onLeave);

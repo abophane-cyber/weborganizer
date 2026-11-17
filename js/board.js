@@ -38,10 +38,14 @@ function linkCard(ctx, card, i) {
   const color = /^#[0-9a-f]{6}$/i.test(card.color || '') ? card.color : '';
   const email = url ? gmailInfo(url)?.email || '' : '';
   const name = card.title || email || url || 'Sans titre';
+  // Lien à ouvrir dans un profil Chrome précis (chromeprofile://profil/adresse).
+  const inProfile = url && /^https:/.test(url) && PROFILE_DIR_RE.test(card.openIn || '') ? card.openIn : '';
   return h('a', {
-    class: `card tile link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`, href: url || null,
+    class: `card tile link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`,
+    href: inProfile ? profileUrl(inProfile, url) : (url || null),
     style: color ? { '--card-bg': color } : null,
-    target: url ? '_blank' : null, rel: 'noopener noreferrer',
+    target: url && !inProfile ? '_blank' : null, rel: 'noopener noreferrer',
+    onclick: inProfile ? e => { e.preventDefault(); openChromeProfile({ title: name, profileDir: inProfile }, url); } : null,
     title: !url ? 'Adresse refusée (seuls les liens http, https et mailto sont autorisés)'
       : email ? `Ouvrir la boîte ${email}` : url,
     'aria-disabled': url ? null : 'true',
@@ -348,17 +352,20 @@ function dockItem(card, cat, groupId) {
   const src = isChrome ? card.photo : (card.icon || faviconFor(url));
   const email = url ? gmailInfo(url)?.email || '' : '';
   const name = card.title || email || url || 'Sans titre';
+  const inProfile = !isChrome && url && /^https:/.test(url) && PROFILE_DIR_RE.test(card.openIn || '') ? card.openIn : '';
   let sub = '';
   try { sub = isChrome ? `Profil Chrome · ${card.profileDir || '?'}` : (email || (url ? new URL(url).hostname : '')); } catch { /* ignore */ }
+  if (inProfile) sub += ` · profil ${inProfile}`;
   const circle = big => h('span', { class: `dock-avatar${big ? ' big' : ''}`, style: color ? { '--card-bg': color } : null },
     iconEl(src, name, isMediaRef(src) ? 'avatar-img' : 'avatar-icon'));
   return h('div', { class: 'dock-slot' },
     h('a', {
-      class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : (url || null),
-      target: !isChrome && url ? '_blank' : null, rel: 'noopener noreferrer', 'aria-label': name,
+      class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : (inProfile ? profileUrl(inProfile, url) : (url || null)),
+      target: !isChrome && url && !inProfile ? '_blank' : null, rel: 'noopener noreferrer', 'aria-label': name,
       onclick: e => {
         if (isEditing()) { e.preventDefault(); actions.editCard(cat.id, groupId, card.id); return; }
         if (isChrome) { e.preventDefault(); openChromeProfile(card); }
+        else if (inProfile) { e.preventDefault(); openChromeProfile({ title: name, profileDir: inProfile }, url); }
       },
     },
       circle(false),

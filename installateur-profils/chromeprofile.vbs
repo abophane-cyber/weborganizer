@@ -1,12 +1,39 @@
 ' ============================================================
 '  WebOrganizer - ouverture d'un profil Chrome
-'  Recoit une adresse du type  chromeprofile://Profile%201
-'  et lance :  chrome.exe --profile-directory="Profile 1"
+'  Recoit :  chromeprofile://Profile%201
+'       ou   chromeprofile://Profile%201/<adresse https encodee>
+'  et lance : chrome.exe --profile-directory="Profile 1" ["https://..."]
 '  (script .vbs : aucune fenetre noire ne s'affiche)
 ' ============================================================
 Option Explicit
 
-Dim args, raw, prof, re, sh, fso, chrome, candidates, c
+Dim args, raw, rest, slash, prof, url, re, reUrl, sh, fso, chrome, candidates, c
+
+' Decode les sequences %XX d'une chaine (ex. %3A -> :)
+Function UrlDecode(s)
+  Dim i, out, ch, hx, reHex
+  Set reHex = New RegExp
+  reHex.Pattern = "^[0-9A-Fa-f]{2}$"
+  out = ""
+  i = 1
+  Do While i <= Len(s)
+    ch = Mid(s, i, 1)
+    hx = Mid(s, i + 1, 2)
+    If ch = "%" And reHex.Test(hx) Then
+      out = out & Chr(CLng("&H" & hx))
+      i = i + 3
+    Else
+      out = out & ch
+      i = i + 1
+    End If
+  Loop
+  UrlDecode = out
+End Function
+
+Sub Refuse(message)
+  MsgBox message, vbExclamation, "Profils Chrome"
+  WScript.Quit 2
+End Sub
 
 Set args = WScript.Arguments
 If args.Count < 1 Then WScript.Quit 1
@@ -24,20 +51,37 @@ Do While Len(raw) > 0 And Right(raw, 1) = "/"
   raw = Left(raw, Len(raw) - 1)
 Loop
 
-' 3. Decoder uniquement les espaces (%20)
-prof = Replace(raw, "%20", " ")
+' 3. Separer le profil et l'adresse eventuelle (avant / apres la premiere "/")
+slash = InStr(raw, "/")
+If slash > 0 Then
+  rest = Mid(raw, slash + 1)
+  raw = Left(raw, slash - 1)
+Else
+  rest = ""
+End If
 
-' 4. Verification : uniquement lettres, chiffres et espaces (1 a 64 caracteres)
+' 4. Profil : decoder uniquement les espaces, puis verifier
+'    (uniquement lettres, chiffres et espaces, 1 a 64 caracteres)
+prof = Replace(raw, "%20", " ")
 Set re = New RegExp
 re.Pattern = "^[A-Za-z0-9 ]{1,64}$"
 If Not re.Test(prof) Then
-  MsgBox "Nom de dossier de profil refuse." & vbCrLf & _
-         "Seuls les lettres, chiffres et espaces sont acceptes (ex. Default, Profile 1).", _
-         vbExclamation, "Profils Chrome"
-  WScript.Quit 2
+  Refuse "Nom de dossier de profil refuse." & vbCrLf & _
+         "Seuls les lettres, chiffres et espaces sont acceptes (ex. Default, Profile 1)."
 End If
 
-' 5. Trouver chrome.exe
+' 5. Adresse eventuelle : uniquement https://, sans guillemets ni espaces
+url = ""
+If rest <> "" Then
+  url = UrlDecode(rest)
+  Set reUrl = New RegExp
+  reUrl.Pattern = "^https://[A-Za-z0-9.-]+(:[0-9]{1,5})?(/[A-Za-z0-9._~%/?=&+,;:@#!-]*)?$"
+  If Len(url) > 2000 Or Not reUrl.Test(url) Then
+    Refuse "Adresse refusee : seules les adresses https:// simples sont acceptees."
+  End If
+End If
+
+' 6. Trouver chrome.exe
 Set sh = CreateObject("WScript.Shell")
 Set fso = CreateObject("Scripting.FileSystemObject")
 chrome = ""
@@ -61,5 +105,9 @@ If chrome = "" Then
   WScript.Quit 3
 End If
 
-' 6. Lancer Chrome dans le profil demande
-sh.Run """" & chrome & """ --profile-directory=""" & prof & """", 1, False
+' 7. Lancer Chrome dans le profil demande (et ouvrir l'adresse s'il y en a une)
+If url = "" Then
+  sh.Run """" & chrome & """ --profile-directory=""" & prof & """", 1, False
+Else
+  sh.Run """" & chrome & """ --profile-directory=""" & prof & """ """ & url & """", 1, False
+End If
