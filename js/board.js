@@ -322,8 +322,6 @@ function renderFree(root, cfg) {
   }
   root.replaceChildren(
     canvas,
-    h('button', { type: 'button', class: 'add-category edit-only', onclick: () => actions.addCategory() },
-      svgIcon('plus', 18), 'Ajouter une catégorie'),
     h('p', { class: 'search-empty', hidden: true }, 'Aucune carte ne correspond à la recherche.'),
   );
   requestAnimationFrame(() => fitCanvas(canvas));
@@ -441,8 +439,6 @@ export function renderBoard(root) {
   });
   root.replaceChildren(
     h('div', { class: 'board-cols' }, columns),
-    h('button', { type: 'button', class: 'add-category edit-only', onclick: () => actions.addCategory() },
-      svgIcon('plus', 18), 'Ajouter une catégorie'),
     h('p', { class: 'search-empty', hidden: true }, 'Aucune carte ne correspond à la recherche.'),
   );
   applySearch(root);
