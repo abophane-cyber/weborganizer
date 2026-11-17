@@ -7,6 +7,7 @@ import { addMediaFile, isMediaRef, mediaInfo } from './media.js';
 import { kindFor } from './background.js';
 import { exportZip, importZip } from './transfer.js';
 import { imageField } from './modal.js';
+import { measurePositions } from './board.js';
 
 let panel;
 let inputs = {};
@@ -217,6 +218,17 @@ function designSection() {
     h('option', { value: 'tile' }, 'Tuiles (comme les profils)'),
     h('option', { value: 'row' }, 'Lignes'));
   inputs.cardStyle = bind(cardStyle, c => c.theme.cardStyle, (c, i) => { c.theme.cardStyle = i.value; }, 'change');
+  const layout = h('select', {},
+    h('option', { value: 'columns' }, 'Colonnes'),
+    h('option', { value: 'free' }, 'Libre (n’importe où)'));
+  inputs.layout = bind(layout, c => c.theme.layout, (c, i) => {
+    if (i.value === 'free' && c.theme.layout !== 'free') {
+      // Chaque catégorie garde sa place actuelle à l'écran.
+      const pos = measurePositions();
+      for (const cat of c.categories) if (pos[cat.id]) cat.pos = pos[cat.id];
+    }
+    c.theme.layout = i.value;
+  }, 'change');
   const columns = h('select', {}, [1, 2, 3, 4, 5].map(n => h('option', { value: String(n) }, String(n))));
   inputs.columns = bind(columns, c => String(c.theme.columns), (c, i) => { c.theme.columns = Number(i.value); }, 'change');
   store.subscribe(() => { overlayOut.textContent = `${Math.round((store.get().background.overlay ?? 0) * 100)} %`; });
@@ -229,7 +241,9 @@ function designSection() {
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Opacité des catégories'), opacity),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Couleur d’accent'), accent),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Style des cartes'), cardStyle),
+    h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Disposition des catégories'), layout),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Nombre de colonnes'), columns),
+    h('p', { class: 'muted small' }, 'Libre : attrapez une catégorie par sa poignée ⠿ et posez-la où vous voulez, même en bas de la page.'),
   );
 }
 

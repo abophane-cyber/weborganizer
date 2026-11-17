@@ -106,7 +106,8 @@ function groupEl(cat, group, gi) {
   );
 }
 
-// pos : { col, nCols, index, count } — place de la catégorie dans sa colonne.
+// pos : { col, nCols, index, count } — place de la catégorie dans sa colonne,
+//       ou { free: true } en disposition libre (déplacement à la souris uniquement).
 function categoryEl(cat, pos) {
   // Cartes directes : masquées si vides et qu'il y a des sous-catégories (sauf en mode édition).
   const direct = cardsGrid({ cat, groupId: '', list: cat.cards });
@@ -117,11 +118,11 @@ function categoryEl(cat, pos) {
       iconEl(cat.icon, cat.name, 'category-icon'),
       collapseToggle('h2', cat.name, cat.collapsed, cardCount, () => actions.toggleCategory(cat.id)),
       h('div', { class: 'edit-controls' },
-        h('span', { class: 'drag-handle', title: 'Glisser pour déplacer la catégorie (dessus, dessous, autre colonne)', 'aria-hidden': 'true' }, svgIcon('grip', 16)),
-        pos.col > 0 && editButton('left', 'Colonne de gauche', () => actions.moveCategoryColumn(cat.id, -1)),
-        pos.col < pos.nCols - 1 && editButton('right', 'Colonne de droite', () => actions.moveCategoryColumn(cat.id, 1)),
-        pos.index > 0 && editButton('up', 'Monter la catégorie', () => actions.moveCategoryInColumn(cat.id, -1)),
-        pos.index < pos.count - 1 && editButton('down', 'Descendre la catégorie', () => actions.moveCategoryInColumn(cat.id, 1)),
+        h('span', { class: 'drag-handle', title: pos.free ? 'Glisser pour placer la catégorie où vous voulez' : 'Glisser pour déplacer la catégorie (dessus, dessous, autre colonne)', 'aria-hidden': 'true' }, svgIcon('grip', 16)),
+        !pos.free && pos.col > 0 && editButton('left', 'Colonne de gauche', () => actions.moveCategoryColumn(cat.id, -1)),
+        !pos.free && pos.col < pos.nCols - 1 && editButton('right', 'Colonne de droite', () => actions.moveCategoryColumn(cat.id, 1)),
+        !pos.free && pos.index > 0 && editButton('up', 'Monter la catégorie', () => actions.moveCategoryInColumn(cat.id, -1)),
+        !pos.free && pos.index < pos.count - 1 && editButton('down', 'Descendre la catégorie', () => actions.moveCategoryInColumn(cat.id, 1)),
         editButton('edit', 'Modifier la catégorie', () => actions.editCategory(cat.id)),
         editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
       ),
@@ -196,8 +197,128 @@ function enableColumnDrop(col, index) {
   });
 }
 
+// ---- Disposition libre : chaque catégorie a une position { x, y } ----
+// x : fraction (0 à 1) de la largeur disponible ; y : distance en px depuis le haut.
+const GRID = 10; // aimantation
+
+function placeFree(section, pos) {
+  section.style.left = `calc((100% - var(--cat-w)) * ${Math.min(1, Math.max(0, pos.x))})`;
+  section.style.top = `${Math.max(0, pos.y)}px`;
+}
+
+// Hauteur du plan : jusqu'à la catégorie la plus basse, au moins jusqu'en bas de l'écran,
+// et une marge supplémentaire en mode édition pour pouvoir descendre plus bas.
+// Échelle du plan pendant l'édition : il est réduit pour tenir à côté du panneau
+// Paramètres, sans changer les positions (pas de chevauchement).
+function editScale(canvas) {
+  if (!document.body.classList.contains('editing')) return 1;
+  const panel = document.getElementById('settings');
+  const avail = window.innerWidth - (panel?.offsetWidth || 400) - canvas.getBoundingClientRect().left - 16;
+  return Math.max(0.4, Math.min(1, avail / canvas.offsetWidth));
+}
+
+function fitCanvas(canvas) {
+  canvas.style.setProperty('--edit-scale', String(editScale(canvas)));
+  let bottom = 0;
+  canvas.querySelectorAll(':scope > .category').forEach(s => { if (!s.hidden) bottom = Math.max(bottom, s.offsetTop + s.offsetHeight); });
+  const top = canvas.getBoundingClientRect().top + window.scrollY; // position dans la page
+  const screenRest = window.innerHeight - top - 60;
+  const extra = document.body.classList.contains('editing') ? 320 : 24;
+  canvas.style.height = `${Math.max(bottom + extra, screenRest, 200)}px`;
+}
+
+function enableFreeDrag(section, cat, canvas) {
+  const handle = section.querySelector('.drag-handle');
+  let st = null;
+  handle.addEventListener('pointerdown', e => {
+    if (!document.body.classList.contains('editing') || e.button !== 0) return;
+    e.preventDefault();
+    const r = section.getBoundingClientRect();
+    const k = editScale(canvas); // coordonnées à l'écran -> coordonnées du plan
+    st = { k, dx: (e.clientX - r.left) / k, dy: (e.clientY - r.top) / k };
+    handle.setPointerCapture(e.pointerId);
+    section.classList.add('moving');
+  });
+  handle.addEventListener('pointermove', e => {
+    if (!st) return;
+    const c = canvas.getBoundingClientRect();
+    const maxL = Math.max(0, canvas.offsetWidth - section.offsetWidth);
+    const left = Math.min(maxL, Math.max(0, Math.round(((e.clientX - c.left) / st.k - st.dx) / GRID) * GRID));
+    const top = Math.max(0, Math.round(((e.clientY - c.top) / st.k - st.dy) / GRID) * GRID);
+    section.style.left = `${left}px`;
+    section.style.top = `${top}px`;
+    st.cur = { x: maxL ? left / maxL : 0, y: top };
+    fitCanvas(canvas);
+  });
+  const end = () => {
+    if (!st) return;
+    const cur = st.cur;
+    st = null;
+    section.classList.remove('moving');
+    if (cur) actions.setCategoryPosition(cat.id, cur);
+  };
+  handle.addEventListener('pointerup', end);
+  handle.addEventListener('pointercancel', end);
+}
+
+// Positions actuelles des catégories à l'écran (pour passer en disposition libre sans saut).
+export function measurePositions() {
+  const area = document.querySelector('.board-cols, .board-canvas');
+  if (!area) return {};
+  // Mesure la page telle qu'elle s'affiche panneau fermé (le panneau la rétrécit).
+  const editing = document.body.classList.contains('editing');
+  if (editing) document.body.classList.remove('editing');
+  const a = area.getBoundingClientRect();
+  const out = {};
+  area.querySelectorAll('.category').forEach(s => {
+    const r = s.getBoundingClientRect();
+    const maxL = Math.max(1, a.width - r.width);
+    out[s.dataset.id] = { x: Math.min(1, Math.max(0, (r.left - a.left) / maxL)), y: Math.round(r.top - a.top) };
+  });
+  if (editing) document.body.classList.add('editing');
+  return out;
+}
+
+let resizeHooked = false;
+function renderFree(root, cfg) {
+  const canvas = h('div', { class: 'board-canvas' });
+  // Catégories sans position : en quinconce, à la suite.
+  let auto = 0;
+  for (const cat of cfg.categories) {
+    const sec = categoryEl(cat, { free: true });
+    const pos = cat.pos || { x: (auto % 3) / 2, y: Math.floor(auto / 3) * 340 };
+    if (!cat.pos) auto++;
+    placeFree(sec, pos);
+    enableFreeDrag(sec, cat, canvas);
+    canvas.append(sec);
+  }
+  root.replaceChildren(
+    canvas,
+    h('button', { type: 'button', class: 'add-category edit-only', onclick: () => actions.addCategory() },
+      svgIcon('plus', 18), 'Ajouter une catégorie'),
+    h('p', { class: 'search-empty', hidden: true }, 'Aucune carte ne correspond à la recherche.'),
+  );
+  requestAnimationFrame(() => fitCanvas(canvas));
+  // Les images (favicônes, photos) peuvent changer la hauteur après coup.
+  const ro = new ResizeObserver(() => fitCanvas(canvas));
+  canvas.querySelectorAll('.category').forEach(s => ro.observe(s));
+  if (!resizeHooked) {
+    resizeHooked = true;
+    const refit = () => { const c = document.querySelector('.board-canvas'); if (c) fitCanvas(c); };
+    addEventListener('resize', refit);
+    // Ouverture / fermeture des Paramètres : marge du bas en mode édition.
+    new MutationObserver(refit).observe(document.body, { attributes: true, attributeFilter: ['class'] });
+  }
+}
+
 export function renderBoard(root) {
   const cfg = store.get();
+  root.classList.toggle('board-free', cfg.theme.layout === 'free');
+  if (cfg.theme.layout === 'free') {
+    renderFree(root, cfg);
+    applySearch(root);
+    return;
+  }
   const { nCols, byColumn } = columnLayout(cfg);
   const columns = byColumn.map((cats, col) => {
     const el = h('div', { class: 'board-col', dataset: { col: String(col) } },

@@ -47,6 +47,11 @@ export function toggleCategory(id) {
 export function toggleGroup(catId, groupId) {
   store.update(() => { const g = findGroup(catId, groupId); g.collapsed = !g.collapsed; });
 }
+// ---- Disposition libre ----
+export function setCategoryPosition(id, pos) {
+  store.update(() => { const cat = findCategory(id); if (cat) cat.pos = { x: pos.x, y: pos.y }; });
+}
+
 // ---- Disposition en colonnes ----
 
 // Fige la colonne actuelle de chaque catégorie, puis réécrit la liste colonne par colonne

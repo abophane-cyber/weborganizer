@@ -120,6 +120,20 @@ body.searching .col-drop { display: none !important; }
 /* Hors édition, une colonne vide ne prend pas de place. */
 body:not(.editing) .board-col:not(:has(.category)) { display: none; }
 
+/* Disposition libre : les catégories sont posées où l'on veut sur un plan. */
+.board.board-free { align-items: stretch; }
+.board-canvas { position: relative; width: 100%; --cat-w: min(100%, 380px); transform-origin: 0 0; }
+/* En édition, le plan garde sa largeur et se réduit pour tenir à côté du panneau. */
+body.editing .board.board-free { padding-right: clamp(16px, 4vw, 48px); }
+body.editing .board-canvas { transform: scale(var(--edit-scale, 1)); }
+.board-canvas > .category { position: absolute; width: var(--cat-w); }
+.board-canvas > .category.moving { z-index: 10; box-shadow: 0 16px 40px rgba(0, 0, 0, 0.55); }
+body.editing .board-canvas {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px);
+  background-size: 20px 20px; border-radius: var(--radius);
+}
+body.editing .board-canvas .drag-handle { cursor: move; }
+
 /* Glisser-déposer des catégories */
 .drag-handle { display: grid; place-items: center; width: 22px; height: 26px; cursor: grab; color: var(--muted); border-radius: 6px; touch-action: none; }
 .drag-handle:hover { color: var(--text); background: rgba(255, 255, 255, 0.1); }

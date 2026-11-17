@@ -25,7 +25,7 @@ export function defaultConfig() {
     logo: '',
     // Décalage (px) du logo et du titre par rapport à leur position centrée.
     layout: { logo: { x: 0, y: 0 }, title: { x: 0, y: 0 } },
-    theme: { accent: '#6ea8fe', panelOpacity: 0.55, cardStyle: 'tile', columns: 3 },
+    theme: { accent: '#6ea8fe', panelOpacity: 0.55, cardStyle: 'tile', columns: 3, layout: 'columns' },
     background: { src: '', kind: 'image', overlay: 0.35 },
     media: {},
     categories: [
@@ -62,6 +62,9 @@ export function normalize(cfg) {
     cat.icon ??= '';
     cat.collapsed = !!cat.collapsed;
     if (!Number.isInteger(cat.column) || cat.column < 0) delete cat.column;
+    if (cat.pos && Number.isFinite(cat.pos.x) && Number.isFinite(cat.pos.y)) {
+      cat.pos = { x: Math.min(1, Math.max(0, cat.pos.x)), y: Math.max(0, Math.round(cat.pos.y)) };
+    } else delete cat.pos;
     cat.groups = Array.isArray(cat.groups) ? cat.groups : [];
     for (const g of cat.groups) {
       g.id ||= uid();
