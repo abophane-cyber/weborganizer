@@ -34,7 +34,20 @@ async function queryPermission(h) {
 export async function init() {
   dir = testDir();
   if (!dir) { try { dir = (await kvGet(HANDLE_KEY)) || null; } catch { dir = null; } }
-  granted = dir ? await queryPermission(dir) : false;
+  granted = false;
+  if (!dir) return;
+  // Chrome peut mettre longtemps à répondre (lecteur pCloud Drive pas encore prêt au
+  // démarrage de l'ordinateur) : on n'attend que brièvement, la réponse tardive
+  // relie le dossier ensuite (la synchro démarre alors d'elle-même).
+  const handle = dir;
+  const check = queryPermission(handle).then(ok => {
+    if (dir !== handle || ok === granted) return ok;
+    granted = ok;
+    emitAuth();
+    return ok;
+  });
+  const quick = await Promise.race([check, new Promise(r => setTimeout(() => r(null), 1500))]);
+  if (quick !== null && dir === handle) granted = quick;
 }
 
 // Choisir le dossier (doit être appelé depuis un clic).
