@@ -132,6 +132,9 @@ export const store = {
     return config;
   },
 
+  // Page de départ affichée sans l'enregistrer (cache local illisible : on ne l'écrase pas).
+  useDefault() { config = normalize(defaultConfig()); },
+
   async persist() {
     try { await kvSet('config', config); } catch (e) { console.warn('Cache local non enregistré', e); }
   },

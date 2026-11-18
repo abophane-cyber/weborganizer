@@ -95,7 +95,7 @@ function render() {
 function welcomeBanner() {
   let dismissed = false;
   try { dismissed = localStorage.getItem('wo.welcome.dismissed') === '1'; } catch { /* ignore */ }
-  if (dismissed || cloud.hasFolder() || !cloud.isConfigured()) return;
+  if (dismissed || startErrors.length || cloud.hasFolder() || !cloud.isConfigured()) return;
   const banner = document.getElementById('banner');
   const close = () => {
     banner.replaceChildren();
@@ -146,19 +146,54 @@ function autoReauthorize() {
   addEventListener('keydown', ask, true);
 }
 
+// Erreur au démarrage : affichée en haut de la page (au lieu d'une page vide).
+const startErrors = [];
+function showStartError(step, e) {
+  console.error(`Démarrage (${step})`, e);
+  startErrors.push(`${step} : ${e?.message || e}`);
+  const banner = document.getElementById('banner');
+  banner.replaceChildren(h('div', { class: 'banner banner-error' },
+    h('span', {}, `Un problème est survenu au chargement — ${startErrors.join(' · ')}`),
+    h('button', { type: 'button', class: 'btn link-btn', onclick: () => banner.replaceChildren() }, 'Fermer'),
+  ));
+}
+
+// Une étape qui échoue ne bloque pas les suivantes.
+function step(name, fn) {
+  try { fn(); } catch (e) { showStartError(name, e); }
+}
+
+// Une étape qui ne répond pas (dossier, cache local) n'empêche pas l'affichage.
+async function stepAsync(name, fn, ms = 4000) {
+  let timer;
+  try {
+    await Promise.race([
+      fn(),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('pas de réponse')), ms); }),
+    ]);
+  } catch (e) { showStartError(name, e); } finally { clearTimeout(timer); }
+}
+
+function safeRender() {
+  step('en-tête', renderHeader);
+  step('fond', renderBackground);
+  step('cartes', () => renderBoard(document.getElementById('board')));
+}
+
 async function start() {
-  await cloud.init();
-  await store.load();
-  render();
-  store.subscribe(render);
-  initSearch(document.getElementById('search'), document.getElementById('board'));
-  initMovable();
-  initSettings();
-  initWeather();
-  initClock();
-  initFullscreen();
-  await sync.init();
-  welcomeBanner();
+  await stepAsync('dossier', () => cloud.init());
+  await stepAsync('cache local', () => store.load());
+  if (!store.get()) step('page par défaut', () => store.useDefault());
+  safeRender();
+  store.subscribe(safeRender);
+  step('recherche', () => initSearch(document.getElementById('search'), document.getElementById('board')));
+  step('déplacement', initMovable);
+  step('paramètres', initSettings);
+  step('météo', initWeather);
+  step('horloge', initClock);
+  step('plein écran', initFullscreen);
+  await stepAsync('synchronisation', () => sync.init(), 8000);
+  step('bandeau', welcomeBanner);
 
   if (cloud.isConnected()) sync.syncNow();
   autoReauthorize();
@@ -174,4 +209,4 @@ async function start() {
   window.__wo = { store, sync, cloud, toggleSettings }; // aide au débogage
 }
 
-start();
+start().catch(e => showStartError('démarrage', e));

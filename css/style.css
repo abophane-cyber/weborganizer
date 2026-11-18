@@ -160,6 +160,7 @@ body.editing .movable:hover { outline-color: var(--accent); }
   background: rgba(20, 24, 31, 0.85); backdrop-filter: blur(10px);
 }
 .banner span { flex: 1 1 240px; }
+.banner-error { border-color: #e5484d; background: rgba(60, 18, 20, 0.9); }
 
 /* ---- Tableau ---- */
 /* Tableau en colonnes, centré sous la barre de recherche : chaque colonne empile ses catégories. */
