@@ -1204,3 +1204,17 @@ body.palette-nature .group:not(.tinted) {
 body.palette-nature .group.tinted {
   background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--group-color) 75%, var(--nat-pine)) var(--cat-a), transparent);
 }
+/* Tuiles de sous-catégories (vue d'une catégorie) : verre dont la teinte et le flou
+   suivent aussi le curseur ; à 0 la vitre est claire, sans teinte ni flou. */
+body.palette-nature .cat-view .cards > .card.group-tile {
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%),
+    color-mix(in srgb, var(--gt-c) var(--cat-a), transparent);
+  backdrop-filter: blur(calc(var(--panel-alpha) * 16px)) saturate(1.3);
+  -webkit-backdrop-filter: blur(calc(var(--panel-alpha) * 16px)) saturate(1.3);
+}
+body.palette-nature .cat-view .cards > .card.group-tile:hover {
+  background:
+    linear-gradient(150deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 100%),
+    color-mix(in srgb, var(--gt-c) min(100%, var(--cat-a) + 12%), transparent);
+}
