@@ -1,13 +1,14 @@
 // Panneau Paramètres : synchronisation, général, design & fond.
 import { h, svgIcon, toast, formatBytes } from './util.js';
-import { store, isPristine } from './store.js';
+import { store, isPristine, findCategory, findGroup, findCard } from './store.js';
 import * as cloud from './folder.js';
 import * as sync from './sync.js';
 import { addMediaFile, isMediaRef, mediaInfo } from './media.js';
 import { kindFor } from './background.js';
 import { exportZip, importZip } from './transfer.js';
 import { imageField } from './modal.js';
-import { measurePositions } from './board.js';
+import { measurePositions, openView } from './board.js';
+import * as selection from './selection.js';
 import * as actions from './actions.js';
 import { findCity } from './weather.js';
 
@@ -194,6 +195,80 @@ function syncSection() {
   );
 }
 
+// ---- Élément choisi (catégorie, sous-catégorie ou carte) ----
+// Ses outils : modifier, ajouter dedans, ouvrir, supprimer. Sans choix : un rappel.
+
+function contextBox() {
+  const box = h('div', { class: 'context-box' });
+  const btn = (label, onclick, cls = '', icon = '') => h('button', { type: 'button', class: `btn ${cls}`, onclick },
+    icon && svgIcon(icon, 15), label);
+  const render = () => {
+    const s = selection.effective();
+    const cat = s && findCategory(s.catId);
+    const group = s?.groupId ? findGroup(s.catId, s.groupId) : null;
+    const card = s?.kind === 'card' ? findCard(s.catId, s.groupId, s.cardId) : null;
+    const missing = s && (!cat || (s.groupId && !group) || (s.kind === 'card' && !card));
+    if (missing) { queueMicrotask(() => selection.clear()); return; }
+    box.className = `context-box${s ? ` context-${s.kind}` : ''}`;
+    if (!s) {
+      box.replaceChildren(h('p', { class: 'muted small' },
+        'Cliquez sur une catégorie, une sous-catégorie ou une carte : ses outils s’affichent ici. '
+        + 'Double-clic sur une catégorie pour l’ouvrir.'));
+      return;
+    }
+    const explicit = !!selection.get();
+    const close = explicit && h('button', {
+      type: 'button', class: 'icon-btn context-close', 'aria-label': 'Ne plus sélectionner', title: 'Ne plus sélectionner',
+      onclick: () => selection.clear(),
+    }, svgIcon('close', 16));
+    const head = (kind, name, where) => h('header', { class: 'context-head' },
+      h('div', {},
+        h('span', { class: 'context-kind' }, kind),
+        h('strong', { class: 'context-name' }, name || 'Sans titre'),
+        where && h('span', { class: 'muted small context-where' }, where)),
+      close);
+    const toParent = () => selection.set({ kind: 'category', catId: cat.id });
+    const inView = !explicit;
+    let parts;
+    if (s.kind === 'category') {
+      const n = cat.cards.length + cat.groups.reduce((k, g) => k + g.cards.length, 0);
+      parts = [
+        head('Catégorie', cat.name, `${cat.groups.length} sous-catégorie(s), ${n} carte(s)`),
+        h('div', { class: 'context-actions' },
+          btn('Modifier (nom, icône, couleur)', () => actions.editCategory(cat.id), 'primary', 'edit'),
+          btn('Ajouter une carte', () => actions.addCard(cat.id), '', 'plus'),
+          btn('Ajouter une sous-catégorie', () => actions.addGroup(cat.id), '', 'plus'),
+          !inView && btn('Ouvrir la catégorie', () => openView(cat.id), '', 'right'),
+          btn('Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger', 'trash')),
+      ];
+    } else if (s.kind === 'group') {
+      parts = [
+        head('Sous-catégorie', group.name, `Dans « ${cat.name} » · ${group.cards.length} carte(s)`),
+        h('div', { class: 'context-actions' },
+          btn('Modifier (nom, couleur)', () => actions.editGroup(cat.id, group.id), 'primary', 'edit'),
+          btn('Ajouter une carte', () => actions.addCard(cat.id, group.id), '', 'plus'),
+          !inView && btn('Ouvrir la sous-catégorie', () => openView(cat.id, group.id), '', 'right'),
+          btn(`Catégorie « ${cat.name} »`, toParent, 'link-btn', 'up'),
+          btn('Supprimer la sous-catégorie', () => actions.deleteGroup(cat.id, group.id), 'danger', 'trash')),
+      ];
+    } else {
+      const where = cat.bare ? 'Carte seule (hors catégorie)' : `Dans « ${cat.name}${group ? ` › ${group.name}` : ''} »`;
+      parts = [
+        head(card.type === 'chrome' ? 'Carte — profil Chrome' : 'Carte', card.title, where),
+        h('div', { class: 'context-actions' },
+          btn('Modifier la carte', () => actions.editCard(cat.id, s.groupId, card.id), 'primary', 'edit'),
+          group && btn(`Sous-catégorie « ${group.name} »`, () => selection.set({ kind: 'group', catId: cat.id, groupId: group.id }), 'link-btn', 'up'),
+          !cat.bare && btn(`Catégorie « ${cat.name} »`, toParent, 'link-btn', 'up'),
+          btn('Supprimer la carte', () => actions.deleteCard(cat.id, s.groupId, card.id), 'danger', 'trash')),
+      ];
+    }
+    box.replaceChildren(...parts);
+  };
+  selection.onChange(render);
+  render();
+  return box;
+}
+
 // ---- Général ----
 
 function generalSection() {
@@ -353,7 +428,8 @@ export function initSettings() {
       h('h2', {}, 'Paramètres'),
       h('button', { type: 'button', class: 'icon-btn settings-close', 'aria-label': 'Fermer les paramètres', onclick: () => toggle(false) }, svgIcon('close')),
     ),
-    h('p', { class: 'muted small edit-hint' }, 'Mode édition actif : les boutons modifier / supprimer apparaissent sur les catégories et les cartes.'),
+    h('p', { class: 'muted small edit-hint' }, 'Mode édition actif : sur la page, les flèches déplacent et la corbeille supprime.'),
+    contextBox(),
     h('div', { class: 'add-row' },
       h('button', { type: 'button', class: 'btn primary', onclick: () => actions.addCategory() }, svgIcon('plus', 15), 'Ajouter une catégorie'),
       h('button', { type: 'button', class: 'btn', onclick: () => actions.addStandaloneCard() }, svgIcon('plus', 15), 'Ajouter une carte seule'),

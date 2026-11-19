@@ -6,6 +6,7 @@ import { glyph } from './icon-library.js';
 import { isMediaRef } from './media.js';
 import { openChromeProfile, profileUrl, PROFILE_DIR_RE } from './chrome-profiles.js';
 import * as actions from './actions.js';
+import * as selection from './selection.js';
 
 function editButton(icon, label, onclick, extra = '') {
   return h('button', {
@@ -23,7 +24,6 @@ function cardControls(ctx, card, i) {
   return h('div', { class: 'edit-controls card-controls' },
     i > 0 && editButton('left', 'Déplacer avant', () => shift(-1)),
     i < n - 1 && editButton('right', 'Déplacer après', () => shift(1)),
-    editButton('edit', 'Modifier la carte', () => actions.editCard(cat.id, groupId, card.id)),
     editButton('trash', 'Supprimer la carte', () => actions.deleteCard(cat.id, groupId, card.id), 'danger'),
   );
 }
@@ -46,7 +46,7 @@ function linkCard(ctx, card, i) {
   const inProfile = url && /^https:/.test(url) && PROFILE_DIR_RE.test(card.openIn || '') ? card.openIn : '';
   return h('a', {
     class: `card tile link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`,
-    dataset: { key: 'c:' + card.id }, draggable: ctx.drag ? 'false' : null,
+    dataset: { key: 'c:' + card.id, cat: ctx.cat.id, group: ctx.groupId || '' }, draggable: ctx.drag ? 'false' : null,
     href: inProfile ? profileUrl(inProfile, url) : (url || null),
     style: color ? { '--card-bg': color } : null,
     target: url && !inProfile ? '_blank' : null, rel: 'noopener noreferrer',
@@ -67,7 +67,7 @@ function chromeCard(ctx, card, i) {
   const valid = PROFILE_DIR_RE.test((card.profileDir || '').trim());
   return h('a', {
     class: 'card tile chrome-card colored', href: valid ? profileUrl(card.profileDir) : '#',
-    dataset: { key: 'c:' + card.id }, draggable: ctx.drag ? 'false' : null,
+    dataset: { key: 'c:' + card.id, cat: ctx.cat.id, group: ctx.groupId || '' }, draggable: ctx.drag ? 'false' : null,
     style: { '--card-bg': card.color },
     title: valid ? `Ouvrir Chrome — profil « ${card.profileDir} »` : 'Dossier du profil à renseigner',
     onclick: e => { e.preventDefault(); openChromeProfile(card); },
@@ -150,7 +150,7 @@ function groupEl(cat, group, gi) {
   return h('div', {
     class: `group${group.color ? ' tinted' : ''}`,
     // tone : rang de la sous-catégorie (0 à 3), pour alterner les teintes de la charte « Nature ».
-    dataset: { tone: String(gi % 4) },
+    dataset: { tone: String(gi % 4), cat: cat.id, group: group.id },
     style: group.color ? { '--group-color': group.color } : null,
   },
     h('div', { class: 'group-head' },
@@ -159,7 +159,6 @@ function groupEl(cat, group, gi) {
       h('div', { class: 'edit-controls' },
         gi > 0 && editButton('up', 'Monter la sous-catégorie', () => actions.moveGroup(cat.id, group.id, -1)),
         gi < cat.groups.length - 1 && editButton('down', 'Descendre la sous-catégorie', () => actions.moveGroup(cat.id, group.id, 1)),
-        editButton('edit', 'Renommer la sous-catégorie', () => actions.editGroup(cat.id, group.id)),
         editButton('trash', 'Supprimer la sous-catégorie', () => actions.deleteGroup(cat.id, group.id), 'danger'),
       ),
     ),
@@ -216,7 +215,6 @@ function categoryEl(cat, pos) {
         !pos.free && pos.col < pos.nCols - 1 && editButton('right', 'Colonne de droite', () => actions.moveCategoryColumn(cat.id, 1)),
         !pos.free && pos.index > 0 && editButton('up', 'Monter la catégorie', () => actions.moveCategoryInColumn(cat.id, -1)),
         !pos.free && pos.index < pos.count - 1 && editButton('down', 'Descendre la catégorie', () => actions.moveCategoryInColumn(cat.id, 1)),
-        editButton('edit', 'Modifier la catégorie', () => actions.editCategory(cat.id)),
         editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
       ),
     ),
@@ -236,7 +234,7 @@ function groupTile(cat, group, i, keys) {
   const key = 'g:' + group.id;
   return h('a', {
     class: `card tile group-tile${group.color ? ' colored' : ''}`, href: `#c/${enc(cat.id)}/${enc(group.id)}`,
-    dataset: { key }, draggable: 'false',
+    dataset: { key, cat: cat.id }, draggable: 'false',
     style: group.color ? { '--card-bg': group.color } : null, title: `Ouvrir « ${group.name} »`,
     onclick: e => { e.preventDefault(); openView(cat.id, group.id); },
   },
@@ -247,7 +245,6 @@ function groupTile(cat, group, i, keys) {
     h('div', { class: 'edit-controls card-controls' },
       i > 0 && editButton('left', 'Déplacer avant', () => actions.moveInView(cat.id, key, -1)),
       i < keys.length - 1 && editButton('right', 'Déplacer après', () => actions.moveInView(cat.id, key, 1)),
-      editButton('edit', 'Modifier la sous-catégorie', () => actions.editGroup(cat.id, group.id)),
       editButton('trash', 'Supprimer la sous-catégorie', () => actions.deleteGroup(cat.id, group.id), 'danger'),
     ),
   );
@@ -263,9 +260,6 @@ function viewEl(view) {
       h('span', {}, group ? group.name : cat.name),
     ),
     h('div', { class: 'edit-controls view-controls' },
-      group
-        ? editButton('edit', 'Modifier la sous-catégorie', () => actions.editGroup(cat.id, group.id))
-        : editButton('edit', 'Modifier la catégorie', () => actions.editCategory(cat.id)),
       group
         ? editButton('trash', 'Supprimer la sous-catégorie', () => actions.deleteGroup(cat.id, group.id), 'danger')
         : editButton('trash', 'Supprimer la catégorie', () => actions.deleteCategory(cat.id), 'danger'),
@@ -818,6 +812,67 @@ function renderDock(cfg) {
 }
 
 export function renderBoard(root) {
+  drawBoard(root);
+  hookSelection(root);
+  const view = currentView(store.get());
+  selection.setView(view ? { catId: view.cat.id, groupId: view.group?.id || '' } : null);
+}
+
+// ---- Sélection en mode édition ----
+// Un clic sur une catégorie, une sous-catégorie ou une carte la choisit (au lieu de
+// l'ouvrir) : le panneau des Paramètres propose alors ses outils. Les tuiles ne gardent
+// que le déplacement et la suppression. Double-clic : ouvre la catégorie / sous-catégorie.
+function selectionAt(t) {
+  const tile = t.closest('.card[data-key]');
+  if (tile) {
+    const id = tile.dataset.key.slice(2);
+    return tile.dataset.key.startsWith('g:')
+      ? { kind: 'group', catId: tile.dataset.cat, groupId: id }
+      : { kind: 'card', catId: tile.dataset.cat, groupId: tile.dataset.group || '', cardId: id };
+  }
+  const group = t.closest('.group[data-group]');
+  if (group) return { kind: 'group', catId: group.dataset.cat, groupId: group.dataset.group };
+  const sec = t.closest('.category[data-id]');
+  if (!sec) return null;
+  const cat = store.get().categories.find(c => c.id === sec.dataset.id);
+  if (cat?.bare) return cat.cards[0] ? { kind: 'card', catId: cat.id, groupId: '', cardId: cat.cards[0].id } : null;
+  return { kind: 'category', catId: sec.dataset.id };
+}
+
+function markSelection(root) {
+  root.querySelectorAll('.is-selected').forEach(el => el.classList.remove('is-selected'));
+  const s = selection.get();
+  if (!s) return;
+  const q = CSS.escape;
+  const sel = s.kind === 'card' ? `.card[data-key="c:${q(s.cardId)}"]`
+    : s.kind === 'group' ? `.group[data-group="${q(s.groupId)}"], .card[data-key="g:${q(s.groupId)}"]`
+      : `.category[data-id="${q(s.catId)}"]:not(.bare)`;
+  root.querySelectorAll(sel).forEach(el => el.classList.add('is-selected'));
+}
+
+let selectionHooked = false;
+function hookSelection(root) {
+  if (selectionHooked) return;
+  selectionHooked = true;
+  selection.onChange(() => markSelection(root));
+  const skip = t => t.closest('.edit-controls, .add-card, .add-group, .view-back');
+  root.addEventListener('click', e => {
+    if (!isEditing() || skip(e.target)) return;
+    const s = selectionAt(e.target);
+    if (!s) { selection.clear(); return; }
+    e.preventDefault();
+    e.stopPropagation();
+    if (!selection.same(s, selection.get())) selection.set(s);
+  }, true);
+  root.addEventListener('dblclick', e => {
+    if (!isEditing() || skip(e.target)) return;
+    const s = selectionAt(e.target);
+    if (s?.kind === 'category') openView(s.catId);
+    else if (s?.kind === 'group') openView(s.catId, s.groupId);
+  });
+}
+
+function drawBoard(root) {
   const cfg = store.get();
   renderDock(cfg);
   const view = currentView(cfg);
