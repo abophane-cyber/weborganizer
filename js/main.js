@@ -81,6 +81,8 @@ function renderHeader() {
   const root = document.documentElement.style;
   root.setProperty('--accent', c.theme.accent);
   root.setProperty('--panel-alpha', String(c.theme.panelOpacity));
+  root.setProperty('--grp-o', String(c.theme.groupOpacity));
+  root.setProperty('--card-o', String(c.theme.cardOpacity));
   document.body.classList.toggle('cards-row', c.theme.cardStyle === 'row');
   document.body.classList.toggle('palette-nature', c.theme.palette === 'nature');
 }

@@ -25,7 +25,7 @@ export function defaultConfig() {
     logo: '',
     // Décalage (px) du logo et du titre par rapport à leur position centrée.
     layout: { logo: { x: 0, y: 0 }, title: { x: 0, y: 0 } },
-    theme: { accent: '#6ea8fe', panelOpacity: 0.55, cardStyle: 'tile', columns: 3, layout: 'columns', palette: 'classic' },
+    theme: { accent: '#6ea8fe', panelOpacity: 0.55, groupOpacity: 0.4, cardOpacity: 1, cardStyle: 'tile', columns: 3, layout: 'columns', palette: 'classic' },
     background: { src: '', kind: 'image', overlay: 0.35 },
     // Météo affichée dans l'en-tête (ville et coordonnées).
     weather: { enabled: true, city: 'Lille', lat: 50.63, lon: 3.06 },

@@ -1185,10 +1185,17 @@ body .card.colored:not(.group-tile) { --cb: var(--card-bg); }
 body.palette-nature .card:not(.colored):not(.group-tile) { --cb: var(--nat-tone, var(--nat-sage)); }
 body .card:not(.group-tile):active:not(.tile-dragging) { transform: translate(4px, 4px) !important; --thick: 2px; }
 
-/* ---- Charte Nature : « Opacité des catégories » agit sur toutes les catégories ----
-   Ouvertes, fermées (tuiles), colorées et sous-catégories. Le curseur va de 0 à 0,95 :
-   --cat-a le ramène à 0–100 % pour que toute sa course serve. Les cartes restent pleines. */
-body.palette-nature { --cat-a: calc(var(--panel-alpha) * 100% / 0.95); }
+/* ---- Opacité par niveau (Paramètres › Catégories / Sous-catégories / Cartes) ----
+   --panel-alpha (0–0,95) : catégories ; --grp-o (0–1) : sous-catégories ;
+   --card-o (0–1) : cartes. Les variables en % servent aux color-mix. */
+:root {
+  --grp-o: 0.4; --card-o: 1;
+  --cat-a: calc(var(--panel-alpha) * 100% / 0.95);
+  --grp-a: calc(var(--grp-o) * 100%);
+  --card-a: calc(var(--card-o) * 100%);
+}
+
+/* Catégories (charte Nature) : ouvertes, fermées (tuiles) et colorées */
 body.palette-nature .category:not(.closed):not(.tinted):not(.bare) {
   background: var(--nat-sheen), color-mix(in srgb, var(--nat-pine) var(--cat-a), transparent);
 }
@@ -1198,23 +1205,54 @@ body.palette-nature .category.closed:not(.tinted):not(.bare) {
 body.palette-nature .category.tinted:not(.bare) {
   background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--cat-color) 82%, var(--nat-pine)) var(--cat-a), transparent);
 }
+
+/* Sous-catégories : encadrés dans une catégorie ouverte… */
+.group { background: rgba(255, 255, 255, calc(var(--grp-o) * 0.22)); }
+.group.tinted { background: color-mix(in srgb, var(--group-color) var(--grp-a), transparent); }
 body.palette-nature .group:not(.tinted) {
-  background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--nat-tone) 58%, var(--nat-pine)) var(--cat-a), transparent);
+  background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--nat-tone) 58%, var(--nat-pine)) var(--grp-a), transparent);
 }
 body.palette-nature .group.tinted {
-  background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--group-color) 75%, var(--nat-pine)) var(--cat-a), transparent);
+  background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--group-color) 75%, var(--nat-pine)) var(--grp-a), transparent);
 }
-/* Tuiles de sous-catégories (vue d'une catégorie) : verre dont la teinte et le flou
-   suivent aussi le curseur ; à 0 la vitre est claire, sans teinte ni flou. */
-body.palette-nature .cat-view .cards > .card.group-tile {
+/* …et tuiles en verre dépoli sur l'écran d'une catégorie : teinte et flou suivent le
+   curseur ; à 0 la vitre est claire, sans teinte ni flou. */
+body .cat-view .cards > .card.group-tile {
   background:
     linear-gradient(150deg, rgba(255, 255, 255, 0.22) 0%, rgba(255, 255, 255, 0.04) 45%, rgba(255, 255, 255, 0) 100%),
-    color-mix(in srgb, var(--gt-c) var(--cat-a), transparent);
-  backdrop-filter: blur(calc(var(--panel-alpha) * 16px)) saturate(1.3);
-  -webkit-backdrop-filter: blur(calc(var(--panel-alpha) * 16px)) saturate(1.3);
+    color-mix(in srgb, var(--gt-c) var(--grp-a), transparent);
+  backdrop-filter: blur(calc(var(--grp-o) * 35px)) saturate(1.3);
+  -webkit-backdrop-filter: blur(calc(var(--grp-o) * 35px)) saturate(1.3);
 }
-body.palette-nature .cat-view .cards > .card.group-tile:hover {
+body .cat-view .cards > .card.group-tile:hover {
   background:
     linear-gradient(150deg, rgba(255, 255, 255, 0.28) 0%, rgba(255, 255, 255, 0.06) 45%, rgba(255, 255, 255, 0) 100%),
-    color-mix(in srgb, var(--gt-c) min(100%, var(--cat-a) + 12%), transparent);
+    color-mix(in srgb, var(--gt-c) min(100%, var(--grp-a) + 12%), transparent);
 }
+
+/* Cartes */
+.card:not(.group-tile) { background: rgba(255, 255, 255, calc(var(--card-o) * 0.12)); }
+.card:not(.group-tile):hover { background: rgba(255, 255, 255, calc(var(--card-o) * 0.13)); }
+.card.colored:not(.group-tile),
+.card.colored:not(.group-tile):hover { background: color-mix(in srgb, var(--card-bg) var(--card-a), transparent); }
+body.palette-nature .card:not(.group-tile) {
+  background: var(--nat-sheen), color-mix(in srgb, var(--nat-tone, var(--nat-sage)) var(--card-a), transparent);
+}
+body.palette-nature .card.colored:not(.group-tile) {
+  background: var(--nat-sheen), color-mix(in srgb, var(--card-bg) var(--card-a), transparent);
+}
+
+/* Paramètres : sections par niveau, chacune sa couleur et son repère de niveau */
+.settings-section.level-cat { --tone: 240, 170, 90; }    /* Catégories : orange */
+.settings-section.level-group { --tone: 90, 200, 210; }  /* Sous-catégories : turquoise */
+.settings-section.level-card { --tone: 240, 120, 150; }  /* Cartes : rose */
+.level-section { border-left-width: 5px; }
+.level-section h3 { display: flex; align-items: center; gap: 8px; }
+.level-section h3::before {
+  font-size: .7rem; letter-spacing: .04em; padding: 2px 8px; border-radius: 999px;
+  background: rgba(var(--tone), 0.2); border: 1px solid rgba(var(--tone), 0.5);
+}
+.level-cat h3::before { content: "Niveau 1"; }
+.level-group h3::before { content: "Niveau 2"; }
+.level-card h3::before { content: "Niveau 3"; }
+.level-section > p { margin: -4px 0 0; }

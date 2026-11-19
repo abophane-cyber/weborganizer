@@ -378,8 +378,6 @@ function designSection() {
   inputs.overlay = bind(overlay, c => c.background.overlay, (c, i) => { c.background.overlay = Number(i.value); overlayOut.textContent = `${Math.round(i.value * 100)} %`; });
   const accent = h('input', { type: 'color' });
   inputs.accent = bind(accent, c => c.theme.accent, (c, i) => { c.theme.accent = i.value; });
-  const opacity = h('input', { type: 'range', min: '0', max: '0.95', step: '0.05' });
-  inputs.opacity = bind(opacity, c => c.theme.panelOpacity, (c, i) => { c.theme.panelOpacity = Number(i.value); });
   // Charte de couleurs : change l'ambiance de toute la page (et la couleur d'accent).
   const palette = h('select', {},
     h('option', { value: 'classic' }, 'Classique (bleu nuit)'),
@@ -411,7 +409,6 @@ function designSection() {
     drop, fileInput, bgInfo,
     h('div', { class: 'row' }, removeBg),
     h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Assombrissement du fond (voile) ', overlayOut), overlay),
-    h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Opacité des catégories'), opacity),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Charte de couleurs'), palette),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Couleur d’accent'), accent),
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Style des cartes'), cardStyle),
@@ -419,6 +416,31 @@ function designSection() {
     h('label', { class: 'field inline' }, h('span', { class: 'field-label' }, 'Nombre de colonnes'), columns),
     h('p', { class: 'muted small' }, 'Libre : attrapez une catégorie par sa poignée ⠿ et posez-la où vous voulez, même en bas de la page.'),
   );
+}
+
+// ---- Réglages par niveau : catégories, sous-catégories, cartes ----
+// Une section par niveau, l'une sous l'autre, chacune avec son curseur d'opacité.
+
+function opacityField(key, label, read, write, max = 1) {
+  const input = h('input', { type: 'range', min: '0', max: String(max), step: '0.05' });
+  const out = h('output', {});
+  const show = v => { out.textContent = `${Math.round(Number(v) / max * 100)} %`; };
+  inputs[key] = bind(input, read, (c, i) => { write(c, Number(i.value)); show(i.value); });
+  store.subscribe(() => show(read(store.get())));
+  show(read(store.get()));
+  return h('label', { class: 'field' }, h('span', { class: 'field-label' }, label, ' ', out), input);
+}
+
+function levelSections() {
+  const level = (cls, title, help, field) => h('section', { class: `settings-section level-section ${cls}` },
+    h('h3', {}, title), h('p', { class: 'muted small' }, help), field);
+  const cats = level('level-cat', 'Catégories', 'Les blocs de la page d’accueil, ouverts ou fermés.',
+    opacityField('opacity', 'Opacité des catégories', c => c.theme.panelOpacity, (c, v) => { c.theme.panelOpacity = v; }, 0.95));
+  const groups = level('level-group', 'Sous-catégories', 'Les tuiles en verre dépoli et les encadrés dans les catégories.',
+    opacityField('groupOpacity', 'Opacité des sous-catégories', c => c.theme.groupOpacity, (c, v) => { c.theme.groupOpacity = v; }));
+  const cards = level('level-card', 'Cartes', 'Les liens et profils, à tous les niveaux.',
+    opacityField('cardOpacity', 'Opacité des cartes', c => c.theme.cardOpacity, (c, v) => { c.theme.cardOpacity = v; }));
+  return [cats, groups, cards];
 }
 
 export function initSettings() {
@@ -437,6 +459,7 @@ export function initSettings() {
     syncSection(),
     generalSection(),
     designSection(),
+    ...levelSections(),
   );
   document.getElementById('settings-btn').addEventListener('click', () => toggle());
   addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen() && !document.querySelector('dialog[open]')) toggle(false); });
