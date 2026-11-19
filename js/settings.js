@@ -109,7 +109,12 @@ function syncSection() {
   };
   actionBtn.addEventListener('click', async () => {
     if (cloud.hasFolder() && !cloud.isConnected()) {
-      try { await cloud.reauthorize(); } catch (e) { toast(`Accès refusé : ${e.message}`, { kind: 'error' }); }
+      try {
+        await cloud.reauthorize({ pickOnFail: true });
+        if (cloud.isConnected()) toast(`Accès au dossier « ${cloud.folderName()} » rétabli. Synchronisation en cours…`, { kind: 'ok' });
+      } catch (e) {
+        if (e?.name !== 'AbortError') toast(e.message, { kind: 'error' });
+      }
     } else pickFolder();
   });
   sync.onStatus(s => { render(s); renderDiag(); });

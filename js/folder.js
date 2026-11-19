@@ -60,11 +60,37 @@ export async function connect() {
   emitAuth();
 }
 
+const withTimeout = (p, ms) => Promise.race([p, new Promise(r => setTimeout(() => r('timeout'), ms))]);
+
 // Redonner l'autorisation au dossier déjà choisi (Chrome la redemande parfois ; depuis un clic).
-export async function reauthorize() {
+// Une seule demande à la fois : le premier clic de la page et le bouton « Autoriser »
+// déclenchent tous deux une demande, la seconde ne doit pas écraser la réponse de la première.
+// pickOnFail : si Chrome refuse sans afficher sa fenêtre (accès déjà refusé ou fenêtre
+// fermée plusieurs fois) ou ne répond pas (lecteur pCloud Drive pas prêt), on ouvre le
+// sélecteur de dossier : rechoisir le dossier redonne l'accès.
+let pending = null;
+export function reauthorize({ pickOnFail = false } = {}) {
   if (!dir) return connect();
-  granted = (await dir.requestPermission({ mode: 'readwrite' })) === 'granted';
-  emitAuth();
+  if (!pending) {
+    const handle = dir;
+    pending = (async () => {
+      let state;
+      try { state = await withTimeout(handle.requestPermission({ mode: 'readwrite' }), 4000); } catch { state = 'error'; }
+      if (dir !== handle) return;
+      granted = state === 'granted';
+      emitAuth();
+    })().finally(() => { pending = null; });
+  }
+  return pending.then(async () => {
+    if (granted || !pickOnFail) return;
+    try {
+      await connect();
+    } catch (e) {
+      if (e?.name === 'AbortError') throw e;
+      throw new Error('Chrome n’a pas redonné l’accès. Cliquez sur « Changer de dossier » et choisissez à nouveau votre dossier WebOrganizer.');
+    }
+    if (!granted) throw new Error('Accès au dossier refusé dans Chrome.');
+  });
 }
 
 export async function disconnect() {
