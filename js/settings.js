@@ -10,6 +10,7 @@ import { imageField } from './modal.js';
 import { measurePositions, openView } from './board.js';
 import * as selection from './selection.js';
 import * as actions from './actions.js';
+import { colorInput } from './actions.js';
 import { findCity } from './weather.js';
 
 let panel;
@@ -205,10 +206,10 @@ function contextBox() {
   let shown = null;
   const render = () => {
     const s = selection.effective();
-    // Curseur en cours de glissement : on ne reconstruit pas la boîte (la page se
-    // redessine à chaque cran, ce qui ferait lâcher le curseur).
+    // Réglage en cours (curseur, palette, code couleur) : on ne reconstruit pas la boîte
+    // (la page se redessine à chaque cran, ce qui ferait lâcher le curseur).
     const active = document.activeElement;
-    if (shown && selection.same(s, shown) && active?.type === 'range' && box.contains(active)) return;
+    if (shown && selection.same(s, shown) && active?.tagName === 'INPUT' && box.contains(active)) return;
     shown = s;
     const cat = s && findCategory(s.catId);
     const group = s?.groupId ? findGroup(s.catId, s.groupId) : null;
@@ -234,9 +235,28 @@ function contextBox() {
         where && h('span', { class: 'muted small context-where' }, where)),
       close);
     const toParent = () => selection.set({ kind: 'category', catId: cat.id });
-    // Opacité propre à cet élément : sans réglage, il suit celui de son niveau
-    // (Paramètres › Catégories / Sous-catégories / Cartes).
-    const ownOpacity = (item, general, what) => {
+    // Apparence propre à cet élément : couleur et opacité. Sans opacité propre, il suit
+    // le réglage de son niveau (Paramètres › Catégories / Sous-catégories / Cartes).
+    const appearance = (item, general, what, { colorRequired = false, defaultColor = '#2F5A61' } = {}) => {
+      const save = fn => store.update(() => fn(item));
+      // Couleur
+      const picker = colorInput(item.color || defaultColor, hex => save(it => { it.color = hex; }));
+      let colorRow;
+      if (colorRequired) {
+        colorRow = h('div', { class: 'field' }, h('span', { class: 'field-label' }, 'Couleur'), picker.el);
+      } else {
+        const use = h('input', { type: 'checkbox', checked: !!item.color });
+        const sync = () => { picker.el.hidden = !use.checked; };
+        use.addEventListener('change', () => {
+          sync();
+          save(it => { if (use.checked) it.color = picker.value; else delete it.color; });
+        });
+        sync();
+        colorRow = h('div', { class: 'field' },
+          h('label', { class: 'check-row' }, use, h('span', { class: 'field-label' }, 'Couleur personnalisée')),
+          picker.el);
+      }
+      // Opacité
       const custom = Number.isFinite(item.opacity);
       const input = h('input', { type: 'range', min: '0', max: '1', step: '0.01', value: String(custom ? item.opacity : general) });
       const out = h('output', {}, `${Math.round(input.value * 100)} %`);
@@ -244,11 +264,13 @@ function contextBox() {
       input.addEventListener('input', () => {
         out.textContent = `${Math.round(input.value * 100)} %`;
         state.textContent = 'personnalisée'; state.classList.add('is-custom');
-        store.update(() => { item.opacity = Number(input.value); });
+        save(it => { it.opacity = Number(input.value); });
       });
       return h('div', { class: 'own-opacity' },
-        h('label', { class: 'field' }, h('span', { class: 'field-label' }, `Opacité de ${what} `, out, ' ', state), input),
-        custom && btn('Revenir au réglage général', () => store.update(() => { delete item.opacity; }), 'link-btn small'));
+        h('span', { class: 'own-title' }, `Apparence de ${what}`),
+        colorRow,
+        h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Opacité ', out, ' ', state), input),
+        custom && btn('Revenir à l’opacité générale', () => save(it => { delete it.opacity; }), 'link-btn small'));
     };
     const theme = store.get().theme;
     const inView = !explicit;
@@ -257,9 +279,9 @@ function contextBox() {
       const n = cat.cards.length + cat.groups.reduce((k, g) => k + g.cards.length, 0);
       parts = [
         head('Catégorie', cat.name, `${cat.groups.length} sous-catégorie(s), ${n} carte(s)`),
-        ownOpacity(cat, theme.panelOpacity / 0.95, 'cette catégorie'),
+        appearance(cat, theme.panelOpacity / 0.95, 'cette catégorie'),
         h('div', { class: 'context-actions' },
-          btn('Modifier (nom, icône, couleur)', () => actions.editCategory(cat.id), 'primary', 'edit'),
+          btn('Modifier (nom, icône)', () => actions.editCategory(cat.id), 'primary', 'edit'),
           btn('Ajouter une carte', () => actions.addCard(cat.id), '', 'plus'),
           btn('Ajouter une sous-catégorie', () => actions.addGroup(cat.id), '', 'plus'),
           !inView && btn('Ouvrir la catégorie', () => openView(cat.id), '', 'right'),
@@ -268,9 +290,9 @@ function contextBox() {
     } else if (s.kind === 'group') {
       parts = [
         head('Sous-catégorie', group.name, `Dans « ${cat.name} » · ${group.cards.length} carte(s)`),
-        ownOpacity(group, theme.groupOpacity, 'cette sous-catégorie'),
+        appearance(group, theme.groupOpacity, 'cette sous-catégorie'),
         h('div', { class: 'context-actions' },
-          btn('Modifier (nom, couleur)', () => actions.editGroup(cat.id, group.id), 'primary', 'edit'),
+          btn('Renommer', () => actions.editGroup(cat.id, group.id), 'primary', 'edit'),
           btn('Ajouter une carte', () => actions.addCard(cat.id, group.id), '', 'plus'),
           !inView && btn('Ouvrir la sous-catégorie', () => openView(cat.id, group.id), '', 'right'),
           btn(`Catégorie « ${cat.name} »`, toParent, 'link-btn', 'up'),
@@ -280,7 +302,8 @@ function contextBox() {
       const where = cat.bare ? 'Carte seule (hors catégorie)' : `Dans « ${cat.name}${group ? ` › ${group.name}` : ''} »`;
       parts = [
         head(card.type === 'chrome' ? 'Carte — profil Chrome' : 'Carte', card.title, where),
-        ownOpacity(card, theme.cardOpacity, 'cette carte'),
+        appearance(card, theme.cardOpacity, 'cette carte',
+          card.type === 'chrome' ? { colorRequired: true } : { defaultColor: '#3A4A6B' }),
         h('div', { class: 'context-actions' },
           btn('Modifier la carte', () => actions.editCard(cat.id, s.groupId, card.id), 'primary', 'edit'),
           group && btn(`Sous-catégorie « ${group.name} »`, () => selection.set({ kind: 'group', catId: cat.id, groupId: group.id }), 'link-btn', 'up'),

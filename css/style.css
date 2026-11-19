@@ -1231,11 +1231,11 @@ body .cat-view .cards > .card.group-tile:hover {
 }
 
 /* Cartes */
-.card:not(.group-tile) { background: rgba(255, 255, 255, calc(var(--card-o) * 0.12)); }
-.card:not(.group-tile):hover { background: rgba(255, 255, 255, calc(var(--card-o) * 0.13)); }
+.card:not(.group-tile):not(.add-card) { background: rgba(255, 255, 255, calc(var(--card-o) * 0.12)); }
+.card:not(.group-tile):not(.add-card):hover { background: rgba(255, 255, 255, calc(var(--card-o) * 0.13)); }
 .card.colored:not(.group-tile),
 .card.colored:not(.group-tile):hover { background: color-mix(in srgb, var(--card-bg) var(--card-a), transparent); }
-body.palette-nature .card:not(.group-tile) {
+body.palette-nature .card:not(.group-tile):not(.add-card) {
   background: var(--nat-sheen), color-mix(in srgb, var(--nat-tone, var(--nat-sage)) var(--card-a), transparent);
 }
 body.palette-nature .card.colored:not(.group-tile) {
@@ -1263,3 +1263,6 @@ body.palette-nature .card.colored:not(.group-tile) {
 .own-state { font-size: .72rem; font-weight: 400; padding: 1px 7px; border-radius: 999px; color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.18); }
 .own-state.is-custom { color: var(--accent); border-color: var(--accent); }
 .own-opacity .link-btn { justify-self: start; }
+
+.own-title { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.own-opacity .color-field[hidden] { display: none; }

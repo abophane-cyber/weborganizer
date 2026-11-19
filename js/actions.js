@@ -14,28 +14,9 @@ const allCardsCount = cat => cat.cards.length + cat.groups.reduce((n, g) => n + 
 
 // ---- Catégories ----
 
-// Case « Couleur personnalisée » + palette / code (catégories et sous-catégories).
-function optionalColorField(current, help) {
-  const input = colorInput(current || '#2F5A61');
-  const use = h('input', { type: 'checkbox', checked: !!current });
-  const el = h('div', { class: 'field' },
-    h('label', { class: 'check-row' }, use, h('span', { class: 'field-label' }, 'Couleur personnalisée')),
-    input.el,
-    h('span', { class: 'field-help' }, help));
-  const sync = () => { input.el.hidden = !use.checked; };
-  use.addEventListener('change', sync);
-  sync();
-  return {
-    el,
-    get error() { return use.checked && !input.valid ? 'Code couleur invalide : utilisez le format #RRGGBB (ex. #6B3A4A).' : ''; },
-    get value() { return use.checked ? input.value : ''; },
-  };
-}
-
-// Enregistre ou retire la couleur (champ absent si vide).
-function applyColor(obj, color) {
-  if (color) obj.color = color; else delete obj.color;
-}
+// Rappel dans les fenêtres : couleur et opacité se règlent dans les outils de l'élément.
+const appearanceHint = () => h('p', { class: 'field-help' },
+  'Couleur et opacité : dans le panneau Paramètres (mode édition), cliquez sur l’élément pour le personnaliser.');
 
 function categoryForm(cat, onSave) {
   const name = h('input', { type: 'text', value: cat.name || '', required: true, maxlength: '60' });
@@ -46,14 +27,12 @@ function categoryForm(cat, onSave) {
     h('span', { class: 'field-help' },
       'Les cartes deviennent des ronds dans une barre fixée au bord gauche ; le survol affiche leur fiche. '
       + 'Pour les modifier : Paramètres ouverts, cliquez sur un rond (corbeille pour supprimer, + pour ajouter).'));
-  const color = optionalColorField(cat.color, 'Teinte le cadre de la catégorie et sa bande de gauche. Décoché : fond neutre.');
   openModal({
     title: cat.id ? 'Modifier la catégorie' : 'Nouvelle catégorie',
-    body: [field('Nom', name), icon.el, color.el, dockRow],
+    body: [field('Nom', name), icon.el, dockRow, appearanceHint()],
     onSubmit: () => {
       if (!name.value.trim()) return 'Le nom est obligatoire.';
-      if (color.error) return color.error;
-      onSave({ name: name.value.trim(), icon: icon.value, display: dock.checked ? 'dock' : undefined, color: color.value });
+      onSave({ name: name.value.trim(), icon: icon.value, display: dock.checked ? 'dock' : undefined });
     },
   });
 }
@@ -62,7 +41,6 @@ export function addCategory() {
   categoryForm({ name: '', icon: '' }, v => store.update(c => {
     const cat = { id: uid(), ...v, cards: [], groups: [] };
     if (!cat.display) delete cat.display;
-    applyColor(cat, v.color);
     // En disposition libre : visible tout de suite, en haut au centre.
     if (c.theme.layout === 'free') cat.pos = { x: 0.5, y: 0 };
     c.categories.push(cat);
@@ -72,7 +50,6 @@ export function editCategory(id) {
   categoryForm(findCategory(id), v => store.update(() => {
     const cat = Object.assign(findCategory(id), v);
     if (!cat.display) delete cat.display;
-    applyColor(cat, v.color);
   }));
 }
 export function deleteCategory(id) {
@@ -172,14 +149,12 @@ export function moveCategory(id, dir) {
 
 function groupForm(group, onSave) {
   const name = h('input', { type: 'text', value: group.name || '', required: true, maxlength: '60' });
-  const color = optionalColorField(group.color, 'Teinte l’encadré de la sous-catégorie. Décoché : neutre.');
   openModal({
     title: group.id ? 'Modifier la sous-catégorie' : 'Nouvelle sous-catégorie',
-    body: [field('Nom', name), color.el],
+    body: [field('Nom', name), appearanceHint()],
     onSubmit: () => {
       if (!name.value.trim()) return 'Le nom est obligatoire.';
-      if (color.error) return color.error;
-      onSave({ name: name.value.trim(), color: color.value });
+      onSave({ name: name.value.trim() });
     },
   });
 }
@@ -187,7 +162,6 @@ function groupForm(group, onSave) {
 export function addGroup(catId) {
   groupForm({}, v => store.update(() => {
     const g = { id: uid(), name: v.name, cards: [] };
-    applyColor(g, v.color);
     findCategory(catId).groups.push(g);
   }));
 }
@@ -195,7 +169,6 @@ export function editGroup(catId, groupId) {
   groupForm(findGroup(catId, groupId), v => store.update(() => {
     const g = findGroup(catId, groupId);
     g.name = v.name;
-    applyColor(g, v.color);
   }));
 }
 export function deleteGroup(catId, groupId) {
@@ -284,18 +257,18 @@ const NATURE_COLORS = [
   ['#5A4636', 'Écorce'], ['#7D4D30', 'Chocolat'], ['#B5603D', 'Terre cuite'], ['#C4864E', 'Caramel'],
   ['#C9A13B', 'Ocre'], ['#EBC89C', 'Sable'], ['#7A5A7E', 'Bruyère'], ['#A65A5A', 'Baie'],
 ];
-function colorInput(initial) {
+export function colorInput(initial, onChange) {
   const start = normalizeHex(initial) || DEFAULT_PROFILE_COLOR;
   const picker = h('input', { type: 'color', value: start.toLowerCase(), 'aria-label': 'Palette de couleurs' });
   const text = h('input', {
     type: 'text', value: start, maxlength: '7', spellcheck: 'false', class: 'hex-input',
     'aria-label': 'Code couleur hexadécimal', placeholder: '#6B3A4A',
   });
-  picker.addEventListener('input', () => { text.value = picker.value.toUpperCase(); text.classList.remove('invalid'); });
+  picker.addEventListener('input', () => { text.value = picker.value.toUpperCase(); text.classList.remove('invalid'); onChange?.(text.value); });
   text.addEventListener('input', () => {
     const hex = normalizeHex(text.value);
     text.classList.toggle('invalid', !hex);
-    if (hex) picker.value = hex.toLowerCase();
+    if (hex) { picker.value = hex.toLowerCase(); onChange?.(hex); }
   });
   text.addEventListener('blur', () => { const hex = normalizeHex(text.value); if (hex) text.value = hex; });
   // Pastilles de couleurs en accord avec la charte « Nature » : un clic choisit la couleur.
@@ -304,6 +277,7 @@ function colorInput(initial) {
     onclick: () => {
       picker.value = hex.toLowerCase(); text.value = hex; text.classList.remove('invalid');
       markSwatch();
+      onChange?.(hex);
     },
   }));
   const markSwatch = () => {
@@ -353,24 +327,12 @@ function cardForm(card, location, onSave) {
   const profileDir = h('input', {
     type: 'text', value: card.profileDir || '', placeholder: 'Default, Profile 1…', maxlength: '64',
   });
-  const color = colorInput(card.color || PROFILE_COLORS[card.title] || DEFAULT_PROFILE_COLOR);
   const badge = h('input', { type: 'text', value: card.badge || '', maxlength: '20', placeholder: 'ex. Tester' });
   const icon = imageField('Icône (dans le cercle)', card.icon, {
     icons: true, favicon: () => siteFor(url.value),
     help: 'Vide : favicône du site, automatiquement.',
   });
   const photo = imageField('Photo ou icône (dans le cercle)', card.photo, { icons: true, help: 'Vide : initiale du nom.' });
-
-  // Couleur facultative des cartes de lien (case à cocher + palette/code).
-  const linkColor = colorInput(card.type !== 'chrome' && card.color ? card.color : '#3A4A6B');
-  const useLinkColor = h('input', { type: 'checkbox', checked: card.type !== 'chrome' && !!card.color });
-  const linkColorRow = h('div', { class: 'field' },
-    h('label', { class: 'check-row' }, useLinkColor, h('span', { class: 'field-label' }, 'Couleur personnalisée')),
-    linkColor.el,
-    h('span', { class: 'field-help' }, 'Fond coloré et texte blanc. Décoché : fond neutre transparent.'));
-  const syncLinkColor = () => { linkColor.el.hidden = !useLinkColor.checked; };
-  useLinkColor.addEventListener('change', syncLinkColor);
-  syncLinkColor();
 
   // Ouvrir le lien dans un profil Chrome précis (ex. la boîte Gmail de ce profil).
   const profiles = [];
@@ -392,14 +354,13 @@ function cardForm(card, location, onSave) {
     field('Ouvrir dans le profil Chrome', openIn,
       'Pour Gmail : choisissez le profil où ce compte est connecté, la boîte s’y ouvrira directement. '
       + 'Nécessite le protocole chromeprofile:// installé (version avec adresse).'),
-    icon.el, linkColorRow);
+    icon.el);
   // Si c'est un lien Gmail déjà construit, on réaffiche l'adresse e-mail pour la modification.
   const existingEmail = gmailAddressFrom(card.url);
   if (existingEmail) url.value = existingEmail;
   const chromeFields = h('div', { class: 'field-group' },
     field('Dossier du profil', profileDir,
       'Dans Chrome, ouvrez chrome://version : à la ligne « Chemin d’accès au profil », reprenez le dernier dossier (Default, Profile 1…).'),
-    field('Couleur de fond', color.el, 'Choisissez dans la palette ou tapez un code, ex. #6B3A4A.'),
     photo.el,
   );
   const sync = () => {
@@ -408,16 +369,12 @@ function cardForm(card, location, onSave) {
     chromeFields.hidden = !chrome;
   };
   type.addEventListener('change', sync);
-  title.addEventListener('input', () => {
-    const preset = PROFILE_COLORS[title.value.trim()];
-    if (preset && type.value === 'chrome') color.value = preset;
-  });
   sync();
 
   openModal({
     title: card.id ? 'Modifier la carte' : 'Nouvelle carte',
     body: [field('Type', type), field('Nom', title), linkFields, chromeFields,
-      field('Badge (facultatif)', badge), field('Emplacement', where)],
+      field('Badge (facultatif)', badge), field('Emplacement', where), appearanceHint()],
     onSubmit: () => {
       const t = title.value.trim();
       const [catId, groupId] = where.value.split('|');
@@ -425,15 +382,15 @@ function cardForm(card, location, onSave) {
         const dir = profileDir.value.trim();
         if (!t) return 'Le nom est obligatoire.';
         if (!PROFILE_DIR_RE.test(dir)) return 'Dossier du profil : lettres, chiffres et espaces uniquement (ex. Profile 1).';
-        if (!color.valid) return 'Code couleur invalide : utilisez le format #RRGGBB (ex. #6B3A4A).';
-        onSave({ type: 'chrome', title: t, profileDir: dir, color: color.value, photo: photo.value, badge: badge.value.trim() }, catId, groupId);
+        // Couleur : celle déjà choisie (outils de la carte), sinon celle du profil connu.
+        const color = card.color || PROFILE_COLORS[t] || DEFAULT_PROFILE_COLOR;
+        onSave({ type: 'chrome', title: t, profileDir: dir, color, photo: photo.value, badge: badge.value.trim() }, catId, groupId);
       } else {
         let u = url.value.trim();
         if (!u) return 'L’adresse est obligatoire.';
-        if (useLinkColor.checked && !linkColor.valid) return 'Code couleur invalide : utilisez le format #RRGGBB (ex. #6B3A4A).';
         const extra = {
           icon: icon.value, badge: badge.value.trim(),
-          ...(useLinkColor.checked ? { color: linkColor.value } : {}),
+          ...(card.color ? { color: card.color } : {}),
           ...(openIn.value ? { openIn: openIn.value } : {}),
         };
         if (EMAIL_RE.test(u)) {
@@ -482,7 +439,7 @@ export function editCard(catId, groupId, cardId) {
   cardForm(findCard(catId, groupId, cardId), `${catId}|${groupId}`, (v, toCat, toGroup) => store.update(() => {
     const from = findHolder(catId, groupId);
     const card = from.cards.find(c => c.id === cardId);
-    for (const k of Object.keys(card)) if (k !== 'id') delete card[k];
+    for (const k of Object.keys(card)) if (k !== 'id' && k !== 'opacity') delete card[k];
     Object.assign(card, v);
     if (toCat !== catId || toGroup !== groupId) {
       from.cards = from.cards.filter(c => c.id !== cardId);
