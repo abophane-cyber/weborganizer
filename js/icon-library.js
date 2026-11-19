@@ -19,7 +19,7 @@ const petals = (n, r1, r2, w = 0.38, cx = 12, cy = 12) => {
 // Icônes en lien avec la charte « Nature » : proposées en premier dans le choix d'icône.
 export const NATURE_ICONS = [
   'leaf', 'sprout', 'plant', 'tree', 'pine', 'branch', 'daisy', 'flower', 'lotus', 'mushroom', 'acorn', 'apple',
-  'sun', 'moon', 'rainbow', 'drop', 'wave', 'snowflake', 'feather', 'paw', 'fish', 'hive', 'fire', 'coffee',
+  'sun', 'moon', 'rainbow', 'drop', 'wave', 'snowflake', 'feather', 'paw', 'fish', 'hive', 'fire', 'coffee', 'hiker',
 ];
 
 export const ICONS = {
@@ -47,6 +47,7 @@ export const ICONS = {
   hive: ['Ruche hexagone miel', 'M12 3l8 4.5v9L12 21l-8-4.5v-9zM8.5 10h7M8.5 12.5h7M8.5 15h7'],
   fire: ['Feu de camp', 'M12 3c3 3 5 6 5 9a5 5 0 0 1-10 0c0-2 1-3.5 2-4.5 0 2 1 3 2 3 0-3-1-5 1-7.5zM5 21l14-2M5 19l14 2'],
   coffee: ['Café boisson', 'M4 9h13v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5zM17 10h1.5a2.5 2.5 0 0 1 0 5H17M8 3c-1 1.5 1 2.5 0 4M12 3c-1 1.5 1 2.5 0 4'],
+  hiker: ['Randonnée marcheur promenade montagne', `${c(13, 4, 2)}M12.5 8l-2 6.5M10.5 14.5L8 21M10.5 14.5l3 2.5v4M12.5 9.5l2.5 2.5 2-1M17.5 8l1.5 13M12.3 8.4L8.8 9l-1.2 4.6 3 .6`],
   folder: ['Dossier', 'M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'],
   'folder-open': ['Dossier ouvert', 'M5 19h13l3-9H8l-3 9zM5 19V6a1 1 0 0 1 1-1h4l2 2h6a1 1 0 0 1 1 1v2'],
   file: ['Document', 'M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V8zM14 3v5h5M9 13h6M9 17h6'],
