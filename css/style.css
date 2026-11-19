@@ -845,7 +845,7 @@ body.palette-nature .category.closed:hover { transform: translateY(-3px); filter
 
 /* Nuances plus marquées : liseré de la teinte de chaque carte / tuile, en plus clair */
 body.palette-nature .card:not(.colored),
-body.palette-nature .category.closed:not(.tinted) {
+body.palette-nature .category.closed:not(.tinted):not(.bare) {
   border-color: color-mix(in srgb, var(--nat-tone, var(--nat-sage)) 65%, #fff 35%);
 }
 body.palette-nature .card.colored { border-color: color-mix(in srgb, var(--card-bg) 65%, #fff 35%); }
@@ -1184,3 +1184,23 @@ body .card:not(.group-tile) {
 body .card.colored:not(.group-tile) { --cb: var(--card-bg); }
 body.palette-nature .card:not(.colored):not(.group-tile) { --cb: var(--nat-tone, var(--nat-sage)); }
 body .card:not(.group-tile):active:not(.tile-dragging) { transform: translate(4px, 4px) !important; --thick: 2px; }
+
+/* ---- Charte Nature : « Opacité des catégories » agit sur toutes les catégories ----
+   Ouvertes, fermées (tuiles), colorées et sous-catégories. Le curseur va de 0 à 0,95 :
+   --cat-a le ramène à 0–100 % pour que toute sa course serve. Les cartes restent pleines. */
+body.palette-nature { --cat-a: calc(var(--panel-alpha) * 100% / 0.95); }
+body.palette-nature .category:not(.closed):not(.tinted):not(.bare) {
+  background: var(--nat-sheen), color-mix(in srgb, var(--nat-pine) var(--cat-a), transparent);
+}
+body.palette-nature .category.closed:not(.tinted):not(.bare) {
+  background: var(--nat-sheen), color-mix(in srgb, var(--nat-tone) var(--cat-a), transparent);
+}
+body.palette-nature .category.tinted:not(.bare) {
+  background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--cat-color) 82%, var(--nat-pine)) var(--cat-a), transparent);
+}
+body.palette-nature .group:not(.tinted) {
+  background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--nat-tone) 58%, var(--nat-pine)) var(--cat-a), transparent);
+}
+body.palette-nature .group.tinted {
+  background: var(--nat-sheen), color-mix(in srgb, color-mix(in srgb, var(--group-color) 75%, var(--nat-pine)) var(--cat-a), transparent);
+}
