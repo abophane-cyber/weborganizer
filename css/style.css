@@ -1266,3 +1266,9 @@ body.palette-nature .card.colored:not(.group-tile) {
 
 .own-title { font-size: .78rem; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
 .own-opacity .color-field[hidden] { display: none; }
+
+/* Panneau : les réglages généraux ne s'affichent qu'à l'accueil (niveau 1) */
+#settings.in-view .settings-section,
+#settings.in-view .add-row { display: none; }
+#settings:not(.in-view) .home-hint { display: none; }
+.home-hint { margin: 12px 0 0; }

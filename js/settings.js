@@ -523,6 +523,15 @@ export function initSettings() {
     designSection(),
     ...levelSections(),
   );
+  // Réglages généraux (synchro, général, design, opacités par niveau, ajouts) : seulement
+  // sur la page d'accueil. Dans une catégorie ou une sous-catégorie, le panneau ne
+  // montre que les outils de l'élément, avec un rappel.
+  const homeHint = h('p', { class: 'muted small home-hint' },
+    'Réglages généraux (synchronisation, design, fond, opacités…) : revenez à la page d’accueil.');
+  panel.querySelector('.context-box').after(homeHint);
+  const syncLevel = () => panel.classList.toggle('in-view', !!selection.getView());
+  selection.onChange(syncLevel);
+  syncLevel();
   document.getElementById('settings-btn').addEventListener('click', () => toggle());
   addEventListener('keydown', e => { if (e.key === 'Escape' && isOpen() && !document.querySelector('dialog[open]')) toggle(false); });
   store.subscribe(e => { if (e.remote || e.type === 'refresh') fillInputs(); });

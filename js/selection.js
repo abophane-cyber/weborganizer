@@ -9,6 +9,7 @@ const subs = new Set();
 const emit = () => subs.forEach(fn => fn());
 
 export const get = () => sel;
+export const getView = () => view;
 export function set(next) { sel = next; emit(); }
 export const clear = () => set(null);
 export function onChange(fn) { subs.add(fn); }
