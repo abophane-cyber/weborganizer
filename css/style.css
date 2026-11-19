@@ -1141,3 +1141,22 @@ body .board .category.closed:not(.bare) {
 body .board .category.closed.tinted:not(.bare) { --cb: var(--cat-color); }
 body.palette-nature .board .category.closed:not(.tinted):not(.bare) { --cb: var(--nat-tone, var(--nat-sage)); }
 body:not(.editing) .board .category.closed:not(.bare):active { transform: translate(4px, 4px); --thick: 2px; }
+/* Cartes : même tranche en biais, en bas et à droite, que les catégories.
+   --cb : teinte de la carte (couleur choisie, teinte Nature ou gris par défaut). */
+body .card:not(.group-tile) {
+  --cb: #3a4150;
+  --thick: 6px;
+  --t: calc(var(--thick) / 4);
+  --e1: color-mix(in srgb, var(--cb) 80%, #000);
+  --e2: color-mix(in srgb, var(--cb) 68%, #000);
+  --bevel: inset 2px 3px 6px rgba(255, 255, 255, 0.16), inset -3px -4px 10px rgba(0, 0, 0, 0.22);
+  box-shadow: var(--bevel),
+    var(--t) var(--t) 1px var(--e1),
+    calc(var(--t) * 2) calc(var(--t) * 2) 1.5px var(--e1),
+    calc(var(--t) * 3) calc(var(--t) * 3) 2px var(--e2),
+    var(--thick) var(--thick) 3px var(--e2),
+    var(--lift) !important;
+}
+body .card.colored:not(.group-tile) { --cb: var(--card-bg); }
+body.palette-nature .card:not(.colored):not(.group-tile) { --cb: var(--nat-tone, var(--nat-sage)); }
+body .card:not(.group-tile):active:not(.tile-dragging) { transform: translate(4px, 4px) !important; --thick: 2px; }
