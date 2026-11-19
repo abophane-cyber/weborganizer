@@ -1256,3 +1256,10 @@ body.palette-nature .card.colored:not(.group-tile) {
 .level-group h3::before { content: "Niveau 2"; }
 .level-card h3::before { content: "Niveau 3"; }
 .level-section > p { margin: -4px 0 0; }
+
+/* Outils de l'élément choisi : son opacité propre */
+.own-opacity { display: grid; gap: 4px; padding: 8px 10px; border-radius: 10px; background: rgba(255, 255, 255, 0.05); }
+.own-opacity .field { margin: 0; }
+.own-state { font-size: .72rem; font-weight: 400; padding: 1px 7px; border-radius: 999px; color: var(--muted); border: 1px solid rgba(255, 255, 255, 0.18); }
+.own-state.is-custom { color: var(--accent); border-color: var(--accent); }
+.own-opacity .link-btn { justify-self: start; }

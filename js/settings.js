@@ -202,8 +202,14 @@ function contextBox() {
   const box = h('div', { class: 'context-box' });
   const btn = (label, onclick, cls = '', icon = '') => h('button', { type: 'button', class: `btn ${cls}`, onclick },
     icon && svgIcon(icon, 15), label);
+  let shown = null;
   const render = () => {
     const s = selection.effective();
+    // Curseur en cours de glissement : on ne reconstruit pas la boîte (la page se
+    // redessine à chaque cran, ce qui ferait lâcher le curseur).
+    const active = document.activeElement;
+    if (shown && selection.same(s, shown) && active?.type === 'range' && box.contains(active)) return;
+    shown = s;
     const cat = s && findCategory(s.catId);
     const group = s?.groupId ? findGroup(s.catId, s.groupId) : null;
     const card = s?.kind === 'card' ? findCard(s.catId, s.groupId, s.cardId) : null;
@@ -228,12 +234,30 @@ function contextBox() {
         where && h('span', { class: 'muted small context-where' }, where)),
       close);
     const toParent = () => selection.set({ kind: 'category', catId: cat.id });
+    // Opacité propre à cet élément : sans réglage, il suit celui de son niveau
+    // (Paramètres › Catégories / Sous-catégories / Cartes).
+    const ownOpacity = (item, general, what) => {
+      const custom = Number.isFinite(item.opacity);
+      const input = h('input', { type: 'range', min: '0', max: '1', step: '0.01', value: String(custom ? item.opacity : general) });
+      const out = h('output', {}, `${Math.round(input.value * 100)} %`);
+      const state = h('span', { class: `own-state${custom ? ' is-custom' : ''}` }, custom ? 'personnalisée' : 'réglage général');
+      input.addEventListener('input', () => {
+        out.textContent = `${Math.round(input.value * 100)} %`;
+        state.textContent = 'personnalisée'; state.classList.add('is-custom');
+        store.update(() => { item.opacity = Number(input.value); });
+      });
+      return h('div', { class: 'own-opacity' },
+        h('label', { class: 'field' }, h('span', { class: 'field-label' }, `Opacité de ${what} `, out, ' ', state), input),
+        custom && btn('Revenir au réglage général', () => store.update(() => { delete item.opacity; }), 'link-btn small'));
+    };
+    const theme = store.get().theme;
     const inView = !explicit;
     let parts;
     if (s.kind === 'category') {
       const n = cat.cards.length + cat.groups.reduce((k, g) => k + g.cards.length, 0);
       parts = [
         head('Catégorie', cat.name, `${cat.groups.length} sous-catégorie(s), ${n} carte(s)`),
+        ownOpacity(cat, theme.panelOpacity / 0.95, 'cette catégorie'),
         h('div', { class: 'context-actions' },
           btn('Modifier (nom, icône, couleur)', () => actions.editCategory(cat.id), 'primary', 'edit'),
           btn('Ajouter une carte', () => actions.addCard(cat.id), '', 'plus'),
@@ -244,6 +268,7 @@ function contextBox() {
     } else if (s.kind === 'group') {
       parts = [
         head('Sous-catégorie', group.name, `Dans « ${cat.name} » · ${group.cards.length} carte(s)`),
+        ownOpacity(group, theme.groupOpacity, 'cette sous-catégorie'),
         h('div', { class: 'context-actions' },
           btn('Modifier (nom, couleur)', () => actions.editGroup(cat.id, group.id), 'primary', 'edit'),
           btn('Ajouter une carte', () => actions.addCard(cat.id, group.id), '', 'plus'),
@@ -255,6 +280,7 @@ function contextBox() {
       const where = cat.bare ? 'Carte seule (hors catégorie)' : `Dans « ${cat.name}${group ? ` › ${group.name}` : ''} »`;
       parts = [
         head(card.type === 'chrome' ? 'Carte — profil Chrome' : 'Carte', card.title, where),
+        ownOpacity(card, theme.cardOpacity, 'cette carte'),
         h('div', { class: 'context-actions' },
           btn('Modifier la carte', () => actions.editCard(cat.id, s.groupId, card.id), 'primary', 'edit'),
           group && btn(`Sous-catégorie « ${group.name} »`, () => selection.set({ kind: 'group', catId: cat.id, groupId: group.id }), 'link-btn', 'up'),

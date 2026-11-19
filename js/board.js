@@ -8,6 +8,16 @@ import { openChromeProfile, profileUrl, PROFILE_DIR_RE } from './chrome-profiles
 import * as actions from './actions.js';
 import * as selection from './selection.js';
 
+// Opacité propre à un élément (réglée dans ses outils) : remplace, pour lui seul, le
+// réglage général de son niveau. v : 0 à 1, ou absent pour suivre le réglage général.
+export function opacityVars(kind, v) {
+  if (!Number.isFinite(v)) return {};
+  const pct = `${Math.round(v * 100)}%`;
+  if (kind === 'category') return { '--panel-alpha': String(v * 0.95), '--cat-a': pct };
+  if (kind === 'group') return { '--grp-o': String(v), '--grp-a': pct };
+  return { '--card-o': String(v), '--card-a': pct };
+}
+
 function editButton(icon, label, onclick, extra = '') {
   return h('button', {
     type: 'button', class: `edit-btn ${extra}`, title: label, 'aria-label': label,
@@ -48,7 +58,7 @@ function linkCard(ctx, card, i) {
     class: `card tile link-card${url ? '' : ' link-blocked'}${color ? ' colored' : ''}`,
     dataset: { key: 'c:' + card.id, cat: ctx.cat.id, group: ctx.groupId || '' }, draggable: ctx.drag ? 'false' : null,
     href: inProfile ? profileUrl(inProfile, url) : (url || null),
-    style: color ? { '--card-bg': color } : null,
+    style: { ...(color ? { '--card-bg': color } : {}), ...opacityVars('card', card.opacity) },
     target: url && !inProfile ? '_blank' : null, rel: 'noopener noreferrer',
     onclick: inProfile ? e => { e.preventDefault(); openChromeProfile({ title: name, profileDir: inProfile }, url); } : null,
     title: !url ? 'Adresse refusée (seuls les liens http, https et mailto sont autorisés)'
@@ -68,7 +78,7 @@ function chromeCard(ctx, card, i) {
   return h('a', {
     class: 'card tile chrome-card colored', href: valid ? profileUrl(card.profileDir) : '#',
     dataset: { key: 'c:' + card.id, cat: ctx.cat.id, group: ctx.groupId || '' }, draggable: ctx.drag ? 'false' : null,
-    style: { '--card-bg': card.color },
+    style: { '--card-bg': card.color, ...opacityVars('card', card.opacity) },
     title: valid ? `Ouvrir Chrome — profil « ${card.profileDir} »` : 'Dossier du profil à renseigner',
     onclick: e => { e.preventDefault(); openChromeProfile(card); },
   },
@@ -151,7 +161,7 @@ function groupEl(cat, group, gi) {
     class: `group${group.color ? ' tinted' : ''}`,
     // tone : rang de la sous-catégorie (0 à 3), pour alterner les teintes de la charte « Nature ».
     dataset: { tone: String(gi % 4), cat: cat.id, group: group.id },
-    style: group.color ? { '--group-color': group.color } : null,
+    style: { ...(group.color ? { '--group-color': group.color } : {}), ...opacityVars('group', group.opacity) },
   },
     h('div', { class: 'group-head' },
       h('span', { class: 'group-icon', 'aria-hidden': 'true' }, glyph('folder', 15)),
@@ -198,7 +208,7 @@ function categoryEl(cat, pos) {
     class: `category closed${cat.color ? ' tinted' : ''}`, 'aria-label': cat.name,
     // tone : rang de la catégorie (0 à 3), pour alterner les teintes de la charte « Nature ».
     dataset: { id: cat.id, tone: String(Math.max(0, store.get().categories.indexOf(cat)) % 4) },
-    style: cat.color ? { '--cat-color': cat.color } : null,
+    style: { ...(cat.color ? { '--cat-color': cat.color } : {}), ...opacityVars('category', cat.opacity) },
     // Un clic n'importe où sur le cadre ouvre la catégorie (sauf boutons et cartes,
     // visibles seulement pendant une recherche ou en édition).
     onclick: e => {
@@ -235,7 +245,7 @@ function groupTile(cat, group, i, keys) {
   return h('a', {
     class: `card tile group-tile${group.color ? ' colored' : ''}`, href: `#c/${enc(cat.id)}/${enc(group.id)}`,
     dataset: { key, cat: cat.id }, draggable: 'false',
-    style: group.color ? { '--card-bg': group.color } : null, title: `Ouvrir « ${group.name} »`,
+    style: { ...(group.color ? { '--card-bg': group.color } : {}), ...opacityVars('group', group.opacity) }, title: `Ouvrir « ${group.name} »`,
     onclick: e => { e.preventDefault(); openView(cat.id, group.id); },
   },
     h('span', { class: 'avatar' }, glyph('folder', 24)),
