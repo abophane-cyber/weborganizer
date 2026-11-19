@@ -237,8 +237,20 @@ function contextBox() {
     const toParent = () => selection.set({ kind: 'category', catId: cat.id });
     // Apparence propre à cet élément : couleur et opacité. Sans opacité propre, il suit
     // le réglage de son niveau (Paramètres › Catégories / Sous-catégories / Cartes).
-    const appearance = (item, general, what, { colorRequired = false, defaultColor = '#2F5A61' } = {}) => {
+    const appearance = (item, general, what, { colorRequired = false, defaultColor = '#2F5A61', nameKey = 'name' } = {}) => {
       const save = fn => store.update(() => fn(item));
+      // Nom : enregistré à la frappe ; vide, l'ancien nom est gardé (et remis en quittant le champ).
+      const name = h('input', { type: 'text', value: item[nameKey] || '', maxlength: '60', 'aria-label': 'Nom' });
+      name.addEventListener('input', () => {
+        const v = name.value.trim();
+        if (!v) return;
+        save(it => { it[nameKey] = v; });
+        const title = box.querySelector('.context-name');
+        if (title) title.textContent = v;
+      });
+      name.addEventListener('blur', () => { if (!name.value.trim()) name.value = item[nameKey] || ''; });
+      name.addEventListener('keydown', e => { if (e.key === 'Enter') name.blur(); });
+      const nameRow = h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Nom'), name);
       // Couleur
       const picker = colorInput(item.color || defaultColor, hex => save(it => { it.color = hex; }));
       let colorRow;
@@ -267,7 +279,8 @@ function contextBox() {
         save(it => { it.opacity = Number(input.value); });
       });
       return h('div', { class: 'own-opacity' },
-        h('span', { class: 'own-title' }, `Apparence de ${what}`),
+        h('span', { class: 'own-title' }, `Personnaliser ${what}`),
+        nameRow,
         colorRow,
         h('label', { class: 'field' }, h('span', { class: 'field-label' }, 'Opacité ', out, ' ', state), input),
         custom && btn('Revenir à l’opacité générale', () => save(it => { delete it.opacity; }), 'link-btn small'));
@@ -303,7 +316,7 @@ function contextBox() {
       parts = [
         head(card.type === 'chrome' ? 'Carte — profil Chrome' : 'Carte', card.title, where),
         appearance(card, theme.cardOpacity, 'cette carte',
-          card.type === 'chrome' ? { colorRequired: true } : { defaultColor: '#3A4A6B' }),
+          card.type === 'chrome' ? { colorRequired: true, nameKey: 'title' } : { defaultColor: '#3A4A6B', nameKey: 'title' }),
         h('div', { class: 'context-actions' },
           btn('Modifier la carte', () => actions.editCard(cat.id, s.groupId, card.id), 'primary', 'edit'),
           group && btn(`Sous-catégorie « ${group.name} »`, () => selection.set({ kind: 'group', catId: cat.id, groupId: group.id }), 'link-btn', 'up'),
