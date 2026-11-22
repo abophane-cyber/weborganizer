@@ -96,13 +96,16 @@ export function normalize(cfg) {
     holder.cards = Array.isArray(holder.cards) ? holder.cards : [];
     for (const card of holder.cards) {
       card.id ||= uid();
-      card.type = card.type === 'chrome' ? 'chrome' : 'link';
+      card.type = ['chrome', 'app'].includes(card.type) ? card.type : 'link';
       card.title ??= '';
       card.badge ??= '';
       if (card.type === 'chrome') {
         card.profileDir ??= '';
         card.color ||= PROFILE_COLORS[card.title] || DEFAULT_PROFILE_COLOR;
         card.photo ??= '';
+      } else if (card.type === 'app') {
+        card.appPath ??= '';
+        card.icon ??= '';
       } else {
         card.url ??= '';
         card.icon ??= '';

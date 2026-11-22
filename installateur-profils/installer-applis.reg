@@ -1,0 +1,16 @@
+Windows Registry Editor Version 5.00
+
+; Declare le protocole weborgapp:// pour l'utilisateur actuel (pas besoin d'etre administrateur).
+; Il permet aux cartes du WebOrganizer d'ouvrir une application de cet ordinateur.
+; Le script doit se trouver dans C:\WebOrganizer\applilocale.vbs
+
+[HKEY_CURRENT_USER\Software\Classes\weborgapp]
+@="URL:WebOrganizer Application"
+"URL Protocol"=""
+
+[HKEY_CURRENT_USER\Software\Classes\weborgapp\shell]
+
+[HKEY_CURRENT_USER\Software\Classes\weborgapp\shell\open]
+
+[HKEY_CURRENT_USER\Software\Classes\weborgapp\shell\open\command]
+@="\"C:\Windows\System32\wscript.exe\" \"C:\WebOrganizer\applilocale.vbs\" \"%1\""

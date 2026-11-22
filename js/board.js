@@ -5,6 +5,7 @@ import { iconEl, faviconFor } from './icons.js';
 import { glyph } from './icon-library.js';
 import { isMediaRef } from './media.js';
 import { openChromeProfile, profileUrl, PROFILE_DIR_RE } from './chrome-profiles.js';
+import { openLocalApp, appUrl, APP_PATH_RE } from './local-apps.js';
 import * as actions from './actions.js';
 import * as selection from './selection.js';
 
@@ -89,7 +90,28 @@ function chromeCard(ctx, card, i) {
   );
 }
 
-const cardEl = (ctx, card, i) => (card.type === 'chrome' ? chromeCard(ctx, card, i) : linkCard(ctx, card, i));
+// Application de l'ordinateur (raccourci .lnk, .exe…) lancée par le protocole weborgapp:.
+function appCard(ctx, card, i) {
+  const valid = APP_PATH_RE.test(card.appPath || '');
+  const color = /^#[0-9a-f]{6}$/i.test(card.color || '') ? card.color : '';
+  const name = card.title || 'Application';
+  return h('a', {
+    class: `card tile app-card${valid ? '' : ' link-blocked'}${color ? ' colored' : ''}`,
+    href: valid ? appUrl(card.appPath) : '#',
+    dataset: { key: 'c:' + card.id, cat: ctx.cat.id, group: ctx.groupId || '' }, draggable: ctx.drag ? 'false' : null,
+    style: { ...(color ? { '--card-bg': color } : {}), ...opacityVars('card', card.opacity) },
+    title: valid ? `Ouvrir ${card.appPath}` : 'Chemin de l’application à renseigner',
+    onclick: e => { e.preventDefault(); openLocalApp(card); },
+  },
+    avatarEl(card.icon, name),
+    h('span', { class: 'card-text' }, h('span', { class: 'card-name' }, name)),
+    card.badge && h('span', { class: 'badge' }, card.badge),
+    cardControls(ctx, card, i),
+  );
+}
+
+const cardEl = (ctx, card, i) => (card.type === 'chrome' ? chromeCard(ctx, card, i)
+  : card.type === 'app' ? appCard(ctx, card, i) : linkCard(ctx, card, i));
 const addCardButton = ctx => h('button', { type: 'button', class: 'card add-card edit-only', onclick: () => actions.addCard(ctx.cat.id, ctx.groupId) },
   svgIcon('plus', 16), 'Ajouter une carte');
 
@@ -652,25 +674,27 @@ const isEditing = () => document.body.classList.contains('editing');
 
 function dockItem(card, cat, groupId) {
   const isChrome = card.type === 'chrome';
-  const url = isChrome ? '' : safeUrl(card.url);
+  const isApp = card.type === 'app';
+  const url = isChrome || isApp ? '' : safeUrl(card.url);
   const valid = isChrome && PROFILE_DIR_RE.test((card.profileDir || '').trim());
   const color = /^#[0-9a-f]{6}$/i.test(card.color || '') ? card.color : '';
   const src = isChrome ? card.photo : (card.icon || faviconFor(url));
   const email = url ? gmailInfo(url)?.email || '' : '';
   const name = card.title || email || url || 'Sans titre';
-  const inProfile = !isChrome && url && /^https:/.test(url) && PROFILE_DIR_RE.test(card.openIn || '') ? card.openIn : '';
+  const inProfile = !isChrome && !isApp && url && /^https:/.test(url) && PROFILE_DIR_RE.test(card.openIn || '') ? card.openIn : '';
   let sub = '';
-  try { sub = isChrome ? `Profil Chrome · ${card.profileDir || '?'}` : (email || (url ? new URL(url).hostname : '')); } catch { /* ignore */ }
+  try { sub = isChrome ? `Profil Chrome · ${card.profileDir || '?'}` : isApp ? 'Application de l’ordinateur' : (email || (url ? new URL(url).hostname : '')); } catch { /* ignore */ }
   if (inProfile) sub += ` · profil ${inProfile}`;
   const circle = big => h('span', { class: `dock-avatar${big ? ' big' : ''}`, style: color ? { '--card-bg': color } : null },
     iconEl(src, name, isMediaRef(src) ? 'avatar-img' : 'avatar-icon'));
   return h('div', { class: 'dock-slot', dataset: { cat: cat.id, group: groupId || '', card: card.id } },
     h('a', {
-      class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : (inProfile ? profileUrl(inProfile, url) : (url || null)),
+      class: 'dock-item', href: isChrome ? (valid ? profileUrl(card.profileDir) : '#') : isApp ? (APP_PATH_RE.test(card.appPath || '') ? appUrl(card.appPath) : '#') : (inProfile ? profileUrl(inProfile, url) : (url || null)),
       target: !isChrome && url && !inProfile ? '_blank' : null, rel: 'noopener noreferrer', 'aria-label': name,
       onclick: e => {
         if (isEditing()) { e.preventDefault(); actions.editCard(cat.id, groupId, card.id); return; }
         if (isChrome) { e.preventDefault(); openChromeProfile(card); }
+        else if (isApp) { e.preventDefault(); openLocalApp(card); }
         else if (inProfile) { e.preventDefault(); openChromeProfile({ title: name, profileDir: inProfile }, url); }
       },
     },
@@ -933,7 +957,7 @@ let query = '';
 const fold = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 function cardText(card, cat, group) {
-  return fold([card.title, card.url, gmailInfo(card.url || '')?.email, card.profileDir, card.badge,
+  return fold([card.title, card.url, gmailInfo(card.url || '')?.email, card.profileDir, card.appPath, card.badge,
     cat.name, group?.name].filter(Boolean).join(' '));
 }
 

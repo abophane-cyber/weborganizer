@@ -115,6 +115,10 @@ Voir [installateur-profils/README.md](installateur-profils/README.md) : copier
 Ensuite, pour chaque carte de profil, renseignez le **Dossier du profil** (lu dans
 `chrome://version`).
 
+Pour les cartes qui ouvrent une **application de l'ordinateur** (raccourci `.lnk`, `.exe`) :
+copier aussi `applilocale.vbs` dans `C:\WebOrganizer\`, puis double-cliquer sur
+`installer-applis.reg` (détails dans le même README).
+
 ---
 
 ## Tester sur votre ordinateur (facultatif)

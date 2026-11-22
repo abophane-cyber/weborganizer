@@ -319,7 +319,7 @@ function contextBox() {
     } else {
       const where = cat.bare ? 'Carte seule (hors catégorie)' : `Dans « ${cat.name}${group ? ` › ${group.name}` : ''} »`;
       parts = [
-        head(card.type === 'chrome' ? 'Carte — profil Chrome' : 'Carte', card.title, where),
+        head(card.type === 'chrome' ? 'Carte — profil Chrome' : card.type === 'app' ? 'Carte — application' : 'Carte', card.title, where),
         appearance(card, theme.cardOpacity, 'cette carte',
           card.type === 'chrome' ? { colorRequired: true, nameKey: 'title' } : { defaultColor: '#3A4A6B', nameKey: 'title' }),
         h('div', { class: 'context-actions' },

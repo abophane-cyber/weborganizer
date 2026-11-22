@@ -57,3 +57,39 @@ ligne de commande de Chrome.
 ## Désinstallation
 
 Double-cliquez sur **`desinstaller.reg`**, puis supprimez `C:\WebOrganizer\chromeprofile.vbs`.
+
+---
+
+# Cartes « Application de l'ordinateur »
+
+Une carte peut aussi **ouvrir une application installée** (raccourci `.lnk`, programme
+`.exe`, raccourci `.url` ou `.appref-ms`), par exemple `C:\Users\…\PMU Placé.lnk`.
+Cela passe par un second protocole, `weborgapp:`, installé de la même façon.
+
+## Installation (une fois par ordinateur)
+
+1. Copiez **`applilocale.vbs`** dans `C:\WebOrganizer\` (à côté de `chromeprofile.vbs`).
+2. Double-cliquez sur **`installer-applis.reg`**, puis acceptez les messages de Windows.
+3. Dans le WebOrganizer, créez une carte de type **« Application de l'ordinateur »** et
+   collez le chemin : dans l'Explorateur, **Maj + clic droit** sur le raccourci →
+   **« Copier en tant que chemin d'accès »** (les guillemets sont retirés automatiquement).
+4. Au premier clic, Chrome demande « Ouvrir wscript.exe ? » : cochez **« Toujours
+   autoriser »** puis **Ouvrir**. Windows demande ensuite **une seule fois par application**
+   si vous l'autorisez.
+
+## Sécurité
+
+N'importe quel site peut tenter d'appeler `weborgapp:`. Le script `applilocale.vbs` :
+- n'accepte qu'un **fichier existant sur un lecteur de cet ordinateur** (`C:\…`, pas de
+  chemin réseau `\serveur\…`) de type `.lnk`, `.exe`, `.url` ou `.appref-ms` ;
+- l'ouvre **sans aucun argument** (comme un double-clic) ;
+- **demande votre accord** la première fois pour chaque fichier, puis le mémorise dans
+  `C:\WebOrganizer\applis-autorisees.txt` (supprimez une ligne pour retirer l'accord).
+
+Si une demande d'autorisation apparaît alors que vous n'avez pas cliqué sur une carte,
+répondez **Non**.
+
+## Désinstallation
+
+Double-cliquez sur **`desinstaller-applis.reg`**, puis supprimez
+`C:\WebOrganizer\applilocale.vbs` et `applis-autorisees.txt`.

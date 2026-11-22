@@ -5,7 +5,7 @@ const ASSETS = [
   './', './index.html', './css/style.css',
   './js/main.js', './js/boot-check.js', './js/app-config.js', './js/util.js', './js/db.js', './js/store.js',
   './js/media.js', './js/folder.js', './js/sync.js', './js/zip.js', './js/icons.js', './js/icon-library.js',
-  './js/chrome-profiles.js', './js/board.js', './js/modal.js', './js/actions.js',
+  './js/chrome-profiles.js', './js/local-apps.js', './js/board.js', './js/modal.js', './js/actions.js',
   './js/background.js', './js/transfer.js', './js/settings.js', './js/weather.js', './js/clock.js',
 ];
 

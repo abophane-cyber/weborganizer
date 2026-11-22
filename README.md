@@ -56,7 +56,7 @@ js/background.js        fond image / vidéo
 js/chrome-profiles.js   ouverture des profils Chrome (chromeprofile://)
 js/transfer.js, zip.js  export / import .zip
 sw.js                   service worker (fonctionnement hors connexion)
-installateur-profils/   protocole Windows chromeprofile:// (.reg + .vbs)
+installateur-profils/   protocoles Windows chromeprofile:// et weborgapp: (.reg + .vbs)
 tests/                  tests de synchronisation avec un faux dossier
 scripts/stamp-version.mjs   numérotation des fichiers à la publication
 .github/workflows/deploy.yml publication automatique sur GitHub Pages

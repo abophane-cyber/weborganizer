@@ -3,6 +3,7 @@ import { h, uid, safeUrl, gmailInfo, EMAIL_RE } from './util.js';
 import { store, findCategory, findGroup, findHolder, findCard, columnLayout, viewOrder, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
 import { openModal, field, imageField } from './modal.js';
 import { PROFILE_DIR_RE } from './chrome-profiles.js';
+import { APP_PATH_RE, cleanAppPath, appName } from './local-apps.js';
 
 function move(list, index, dir) {
   const j = index + dir;
@@ -318,8 +319,9 @@ function locationSelect(current) {
 
 function cardForm(card, location, onSave) {
   const type = h('select', {},
-    h('option', { value: 'link', selected: card.type !== 'chrome' }, 'Lien web'),
+    h('option', { value: 'link', selected: card.type !== 'chrome' && card.type !== 'app' }, 'Lien web'),
     h('option', { value: 'chrome', selected: card.type === 'chrome' }, 'Profil Chrome'),
+    h('option', { value: 'app', selected: card.type === 'app' }, 'Application de l’ordinateur'),
   );
   const where = locationSelect(location);
   const title = h('input', { type: 'text', value: card.title || '', maxlength: '60' });
@@ -333,6 +335,11 @@ function cardForm(card, location, onSave) {
     help: 'Vide : favicône du site, automatiquement.',
   });
   const photo = imageField('Photo ou icône (dans le cercle)', card.photo, { icons: true, help: 'Vide : initiale du nom.' });
+  const appPath = h('input', {
+    type: 'text', value: card.appPath || '', maxlength: '260', spellcheck: 'false',
+    placeholder: 'C:\\Dossier\\Appli.lnk',
+  });
+  const appIcon = imageField('Icône (dans le cercle)', card.type === 'app' ? card.icon : '', { icons: true, help: 'Vide : initiale du nom.' });
 
   // Ouvrir le lien dans un profil Chrome précis (ex. la boîte Gmail de ce profil).
   const profiles = [];
@@ -363,17 +370,24 @@ function cardForm(card, location, onSave) {
       'Dans Chrome, ouvrez chrome://version : à la ligne « Chemin d’accès au profil », reprenez le dernier dossier (Default, Profile 1…).'),
     photo.el,
   );
+  const appFields = h('div', { class: 'field-group' },
+    field('Chemin de l’application', appPath,
+      'Dans l’Explorateur, faites Maj + clic droit sur le raccourci (.lnk) ou le programme (.exe) → '
+      + '« Copier en tant que chemin d’accès », puis collez ici. '
+      + 'Nécessite le protocole weborgapp: installé sur cet ordinateur (voir l’installateur des profils Chrome).'),
+    appIcon.el,
+  );
   const sync = () => {
-    const chrome = type.value === 'chrome';
-    linkFields.hidden = chrome;
-    chromeFields.hidden = !chrome;
+    linkFields.hidden = type.value !== 'link';
+    chromeFields.hidden = type.value !== 'chrome';
+    appFields.hidden = type.value !== 'app';
   };
   type.addEventListener('change', sync);
   sync();
 
   openModal({
     title: card.id ? 'Modifier la carte' : 'Nouvelle carte',
-    body: [field('Type', type), field('Nom', title), linkFields, chromeFields,
+    body: [field('Type', type), field('Nom', title), linkFields, chromeFields, appFields,
       field('Badge (facultatif)', badge), field('Emplacement', where), appearanceHint()],
     onSubmit: () => {
       const t = title.value.trim();
@@ -385,6 +399,14 @@ function cardForm(card, location, onSave) {
         // Couleur : celle déjà choisie (outils de la carte), sinon celle du profil connu.
         const color = card.color || PROFILE_COLORS[t] || DEFAULT_PROFILE_COLOR;
         onSave({ type: 'chrome', title: t, profileDir: dir, color, photo: photo.value, badge: badge.value.trim() }, catId, groupId);
+      } else if (type.value === 'app') {
+        const p = cleanAppPath(appPath.value);
+        if (!p) return 'Le chemin de l’application est obligatoire.';
+        if (!APP_PATH_RE.test(p)) return 'Chemin refusé : indiquez un fichier .lnk, .exe, .url ou .appref-ms de cet ordinateur (ex. C:\\Dossier\\Appli.lnk).';
+        onSave({
+          type: 'app', title: t || appName(p), appPath: p, icon: appIcon.value, badge: badge.value.trim(),
+          ...(card.color ? { color: card.color } : {}),
+        }, catId, groupId);
       } else {
         let u = url.value.trim();
         if (!u) return 'L’adresse est obligatoire.';
