@@ -209,6 +209,16 @@ function contextBox() {
   const btn = (label, onclick, cls = '', icon = '') => h('button', { type: 'button', class: `btn ${cls}`, onclick },
     icon && svgIcon(icon, 15), label);
   let shown = null;
+  // Flèches de navigation : ↑ remonte au parent (sous-catégorie, puis catégorie),
+  // ↓ redescend vers l'élément d'où l'on vient. downStack garde ce chemin.
+  const downStack = [];
+  const parentOf = x => {
+    if (!x) return null;
+    if (x.kind === 'card' && x.groupId) return { kind: 'group', catId: x.catId, groupId: x.groupId };
+    if (x.kind === 'card') return findCategory(x.catId)?.bare ? null : { kind: 'category', catId: x.catId };
+    if (x.kind === 'group') return { kind: 'category', catId: x.catId };
+    return null;
+  };
   const render = () => {
     const s = selection.effective();
     // Réglage en cours (curseur, palette, code couleur) : on ne reconstruit pas la boîte
@@ -221,6 +231,8 @@ function contextBox() {
     const card = s?.kind === 'card' ? findCard(s.catId, s.groupId, s.cardId) : null;
     const missing = s && (!cat || (s.groupId && !group) || (s.kind === 'card' && !card));
     if (missing) { queueMicrotask(() => selection.clear()); return; }
+    // Un autre choix que par les flèches : le chemin de retour est oublié.
+    while (downStack.length && !selection.same(parentOf(downStack.at(-1)), s)) downStack.pop();
     box.className = `context-box${s ? ` context-${s.kind}` : ''}`;
     if (!s) {
       box.replaceChildren(h('p', { class: 'muted small' },
@@ -233,12 +245,26 @@ function contextBox() {
       type: 'button', class: 'icon-btn context-close', 'aria-label': 'Ne plus sélectionner', title: 'Ne plus sélectionner',
       onclick: () => selection.clear(),
     }, svgIcon('close', 16));
+    const nameOf = x => (x.kind === 'card' ? findCard(x.catId, x.groupId, x.cardId)?.title
+      : x.kind === 'group' ? findGroup(x.catId, x.groupId)?.name : findCategory(x.catId)?.name) || 'Sans titre';
+    const parent = parentOf(s);
+    const child = downStack.at(-1);
+    const up = parent && h('button', {
+      type: 'button', class: 'icon-btn context-nav-btn', 'aria-label': `Remonter vers « ${nameOf(parent)} »`,
+      title: `Remonter vers « ${nameOf(parent)} »`,
+      onclick: () => { downStack.push(s); selection.set(parent); },
+    }, svgIcon('up', 16));
+    const down = child && h('button', {
+      type: 'button', class: 'icon-btn context-nav-btn', 'aria-label': `Redescendre vers « ${nameOf(child)} »`,
+      title: `Redescendre vers « ${nameOf(child)} »`,
+      onclick: () => { downStack.pop(); selection.set(child); },
+    }, svgIcon('down', 16));
     const head = (kind, name, where) => h('header', { class: 'context-head' },
       h('div', {},
         h('span', { class: 'context-kind' }, kind),
         h('strong', { class: 'context-name' }, name || 'Sans titre'),
         where && h('span', { class: 'muted small context-where' }, where)),
-      close);
+      h('div', { class: 'context-nav' }, up, down, close));
     const toParent = () => selection.set({ kind: 'category', catId: cat.id });
     // Apparence propre à cet élément : couleur et opacité. Sans opacité propre, il suit
     // le réglage de son niveau (Paramètres › Catégories / Sous-catégories / Cartes).
