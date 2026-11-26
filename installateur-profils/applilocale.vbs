@@ -67,14 +67,70 @@ Function NextByte(s, ByRef i)
   NextByte = v
 End Function
 
+' ---- Journal : chaque appel est note dans journal-applis.txt (a cote du script) ----
+Dim target, journalFile
+target = ""
+
+Sub LogEvent(status, detail)
+  Dim ts, d, oldFile
+  On Error Resume Next
+  ' Au-dela de 1 Mo, l'ancien journal est renomme journal-applis.ancien.txt
+  If fso.FileExists(journalFile) Then
+    If fso.GetFile(journalFile).Size > 1048576 Then
+      oldFile = fso.BuildPath(fso.GetParentFolderName(journalFile), "journal-applis.ancien.txt")
+      If fso.FileExists(oldFile) Then fso.DeleteFile oldFile, True
+      fso.MoveFile journalFile, oldFile
+    End If
+  End If
+  ' Plusieurs appels simultanes : on reessaie si le fichier est deja ouvert (jusqu'a 2 s)
+  Dim tries
+  Set ts = Nothing
+  For tries = 1 To 20
+    Err.Clear
+    If fso.FileExists(journalFile) Then
+      Set ts = fso.OpenTextFile(journalFile, 8, False, -1)
+    Else
+      Set ts = fso.CreateTextFile(journalFile, False, True)
+      If Err.Number = 0 Then ts.WriteLine "; Journal du WebOrganizer : chaque demande d'ouverture d'application."
+    End If
+    If Err.Number = 0 Then Exit For
+    Set ts = Nothing
+    WScript.Sleep 100
+  Next
+  If ts Is Nothing Then Exit Sub
+  d = Now
+  ' Pas de retour a la ligne dans le texte enregistre (un site ne peut pas fausser le journal)
+  detail = Left(Replace(Replace(Replace(detail, vbCr, " "), vbLf, " "), vbTab, " "), 400)
+  ts.WriteLine Year(d) & "-" & Right("0" & Month(d), 2) & "-" & Right("0" & Day(d), 2) & " " & _
+               Right("0" & Hour(d), 2) & ":" & Right("0" & Minute(d), 2) & ":" & Right("0" & Second(d), 2) & _
+               "  " & status & "  " & detail
+  ts.Close
+  On Error GoTo 0
+End Sub
+
+' Message d'alerte commun a tous les refus
+Function AlertText(reason)
+  AlertText = ChrW(&H26A0) & "  TENTATIVE BLOQUEE - rien n'a ete lance." & vbCrLf & vbCrLf & _
+    reason & vbCrLf & vbCrLf & _
+    "Si vous n'avez PAS clique sur une carte du WebOrganizer juste avant, un site a peut-etre " & _
+    "essaye d'ouvrir un programme sur votre ordinateur : fermez l'onglet suspect." & vbCrLf & vbCrLf & _
+    "Journal des demandes : " & journalFile
+End Function
+
 Sub Refuse(message)
-  MsgBox message, vbExclamation, TITRE
+  LogEvent "BLOQUE ", message & " : " & target
+  MsgBox AlertText(message & vbCrLf & target), vbCritical, TITRE & " - tentative bloquee"
   WScript.Quit 2
 End Sub
+
+Set fso = CreateObject("Scripting.FileSystemObject")
+listFile = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "applis-autorisees.txt")
+journalFile = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "journal-applis.txt")
 
 Set args = WScript.Arguments
 If args.Count < 1 Then WScript.Quit 1
 raw = args(0)
+target = Left(raw, 400)
 
 ' 1. Retirer le prefixe du protocole (avec ou sans //) et les / de fin
 If LCase(Left(raw, 12)) = "weborgapp://" Then
@@ -86,9 +142,6 @@ Do While Len(raw) > 0 And Right(raw, 1) = "/"
   raw = Left(raw, Len(raw) - 1)
 Loop
 If Len(raw) > 3000 Then Refuse "Chemin trop long."
-
-Set fso = CreateObject("Scripting.FileSystemObject")
-listFile = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "applis-autorisees.txt")
 
 ' Ouvre la liste dans le Bloc-notes (la cree avec une explication si besoin).
 ' Sans danger : le script n'y ecrit jamais de chemin, c'est a vous de le coller.
@@ -105,27 +158,28 @@ End Sub
 
 ' Bouton "Autoriser sur cet ordinateur" de la page : weborgapp:liste
 If LCase(raw) = "liste" Then
+  LogEvent "LISTE  ", "ouverture de la liste des applications autorisees"
   OpenList
   WScript.Quit 0
 End If
 
 ' 2. Decoder puis verifier le chemin
 path = Utf8UrlDecode(raw)
+target = Left(path, 400)
 Set re = New RegExp
 re.IgnoreCase = True
 ' Lecteur local (pas de chemin reseau \\...), sans guillemets ni caracteres interdits
 re.Pattern = "^[A-Za-z]:\\[^""<>|?*\r\n\t]+$"
 If Len(path) > 260 Or Not re.Test(path) Or InStr(path, "\..\") > 0 Then
-  Refuse "Chemin refuse : seul un fichier de cet ordinateur (ex. C:\Dossier\Appli.lnk) peut etre ouvert."
+  Refuse "Chemin refuse (seul un fichier de cet ordinateur, ex. C:\Dossier\Appli.lnk, est accepte)"
 End If
 re.Pattern = "\.(lnk|exe|url|appref-ms)$"
 If Not re.Test(path) Then
-  Refuse "Type de fichier refuse :" & vbCrLf & path & vbCrLf & vbCrLf & _
-         "Seuls les raccourcis (.lnk, .url, .appref-ms) et programmes (.exe) sont acceptes."
+  Refuse "Type de fichier refuse (seuls .lnk, .url, .appref-ms et .exe sont acceptes)"
 End If
 
 If Not fso.FileExists(path) Then
-  Refuse "Fichier introuvable sur cet ordinateur :" & vbCrLf & path
+  Refuse "Fichier introuvable sur cet ordinateur"
 End If
 
 ' 3. Liste des fichiers autorises (un chemin par ligne, ecrite par vous)
@@ -175,15 +229,16 @@ End Function
 If Not IsAllowed(path) Then
   ' Volontairement aucun bouton "Autoriser" : un site ne doit pas pouvoir obtenir
   ' un accord d'un simple clic. On propose seulement d'ouvrir la liste.
-  If MsgBox("Cette application n'est pas dans votre liste :" & vbCrLf & vbCrLf & _
-            path & vbCrLf & vbCrLf & _
-            "Pour l'autoriser, ajoutez vous-meme ce chemin sur une ligne du fichier :" & vbCrLf & _
+  LogEvent "BLOQUE ", "hors de la liste : " & path
+  If MsgBox(AlertText("Cette application n'est pas dans votre liste :" & vbCrLf & path) & vbCrLf & vbCrLf & _
+            "C'est bien vous ? Pour l'autoriser, ajoutez vous-meme ce chemin sur une ligne de :" & vbCrLf & _
             listFile & vbCrLf & vbCrLf & _
-            "Si vous n'avez pas clique sur une carte du WebOrganizer, n'ajoutez rien." & vbCrLf & vbCrLf & _
             "Ouvrir la liste dans le Bloc-notes ?", _
-            vbYesNo + vbExclamation + vbDefaultButton2, TITRE) = vbYes Then OpenList
+            vbYesNo + vbCritical + vbDefaultButton2, TITRE & " - tentative bloquee") = vbYes Then OpenList
   WScript.Quit 4
 End If
+
+LogEvent "OUVERT ", path
 
 ' 4. Ouvrir le fichier comme un double-clic (sans argument)
 folder = fso.GetParentFolderName(path)

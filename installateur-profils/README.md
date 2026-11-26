@@ -101,7 +101,17 @@ N'importe quel site peut tenter d'appeler `weborgapp:`. Le script `applilocale.v
 Au pire, un site malveillant pourrait donc ouvrir l'une des applications de votre liste.
 Supprimez une ligne de la liste pour retirer l'accord.
 
+### Alerte et journal
+
+- Toute demande refusée (application hors de la liste, fichier introuvable, chemin réseau,
+  mauvais type de fichier) affiche une **alerte « ⚠ TENTATIVE BLOQUÉE »** : rien n'est lancé.
+  Si vous n'avez pas cliqué sur une carte juste avant, un site a peut-être essayé : fermez
+  l'onglet suspect.
+- Chaque demande est notée dans **`C:\WebOrganizer\journal-applis.txt`** (date, heure,
+  `OUVERT`, `BLOQUE` ou `LISTE`, et le fichier demandé). Ouvrez-le dans le Bloc-notes pour
+  vérifier après coup. Au-delà de 1 Mo, il est renommé `journal-applis.ancien.txt`.
+
 ## Désinstallation
 
 Double-cliquez sur **`desinstaller-applis.reg`**, puis supprimez
-`C:\WebOrganizer\applilocale.vbs` et `applis-autorisees.txt`.
+`C:\WebOrganizer\applilocale.vbs`, `applis-autorisees.txt` et `journal-applis.txt`.
