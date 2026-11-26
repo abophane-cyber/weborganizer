@@ -80,6 +80,11 @@ Cela passe par un second protocole, `weborgapp:`, installé de la même façon.
 6. Au premier clic, Chrome demande « Ouvrir wscript.exe ? » : cochez **« Toujours
    autoriser »** puis **Ouvrir**.
 
+Raccourci pour l'étape 4 : dans le formulaire de la carte, le bouton **« Autoriser sur cet
+ordinateur »** copie le chemin et ouvre la liste dans le Bloc-notes ; il ne reste qu'à faire
+**Ctrl+V** sur une nouvelle ligne puis **Ctrl+S**. (La page n'écrit jamais elle-même dans la
+liste : sinon n'importe quel site pourrait le faire aussi.)
+
 Si vous oubliez l'étape 4, un message l'indique au clic et propose d'ouvrir la liste dans
 le Bloc-notes.
 

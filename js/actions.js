@@ -3,7 +3,7 @@ import { h, uid, safeUrl, gmailInfo, EMAIL_RE } from './util.js';
 import { store, findCategory, findGroup, findHolder, findCard, columnLayout, viewOrder, PROFILE_COLORS, DEFAULT_PROFILE_COLOR } from './store.js';
 import { openModal, field, imageField } from './modal.js';
 import { PROFILE_DIR_RE } from './chrome-profiles.js';
-import { APP_PATH_RE, cleanAppPath, appName } from './local-apps.js';
+import { APP_PATH_RE, cleanAppPath, appName, allowOnThisComputer } from './local-apps.js';
 
 function move(list, index, dir) {
   const j = index + dir;
@@ -374,8 +374,15 @@ function cardForm(card, location, onSave) {
     field('Chemin de l’application', appPath,
       'Dans l’Explorateur, faites Maj + clic droit sur le raccourci (.lnk) ou le programme (.exe) → '
       + '« Copier en tant que chemin d’accès », puis collez ici. '
-      + 'Collez aussi ce chemin dans C:\\WebOrganizer\\applis-autorisees.txt (Bloc-notes) pour l’autoriser. '
       + 'Nécessite le protocole weborgapp: installé sur cet ordinateur (voir l’installateur des profils Chrome).'),
+    h('div', { class: 'field app-allow' },
+      h('button', {
+        type: 'button', class: 'btn small', style: { justifySelf: 'start', alignSelf: 'flex-start' },
+        onclick: () => allowOnThisComputer(cleanAppPath(appPath.value)),
+      }, 'Autoriser sur cet ordinateur'),
+      h('span', { class: 'field-help' },
+        'Copie le chemin et ouvre la liste des applications autorisées dans le Bloc-notes : '
+        + 'collez-le (Ctrl+V) sur une nouvelle ligne puis enregistrez (Ctrl+S). À faire une fois par application et par ordinateur.')),
     appIcon.el,
   );
   const sync = () => {

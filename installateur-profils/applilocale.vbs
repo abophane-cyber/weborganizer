@@ -87,6 +87,28 @@ Do While Len(raw) > 0 And Right(raw, 1) = "/"
 Loop
 If Len(raw) > 3000 Then Refuse "Chemin trop long."
 
+Set fso = CreateObject("Scripting.FileSystemObject")
+listFile = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "applis-autorisees.txt")
+
+' Ouvre la liste dans le Bloc-notes (la cree avec une explication si besoin).
+' Sans danger : le script n'y ecrit jamais de chemin, c'est a vous de le coller.
+Sub OpenList()
+  Dim ts2
+  If Not fso.FileExists(listFile) Then
+    Set ts2 = fso.CreateTextFile(listFile, False, True)
+    ts2.WriteLine "; Applications que le WebOrganizer peut ouvrir : un chemin complet par ligne."
+    ts2.WriteLine "; (Maj + clic droit sur le raccourci > Copier en tant que chemin d'acces, puis coller)"
+    ts2.Close
+  End If
+  CreateObject("WScript.Shell").Run "notepad.exe """ & listFile & """", 1, False
+End Sub
+
+' Bouton "Autoriser sur cet ordinateur" de la page : weborgapp:liste
+If LCase(raw) = "liste" Then
+  OpenList
+  WScript.Quit 0
+End If
+
 ' 2. Decoder puis verifier le chemin
 path = Utf8UrlDecode(raw)
 Set re = New RegExp
@@ -102,13 +124,11 @@ If Not re.Test(path) Then
          "Seuls les raccourcis (.lnk, .url, .appref-ms) et programmes (.exe) sont acceptes."
 End If
 
-Set fso = CreateObject("Scripting.FileSystemObject")
 If Not fso.FileExists(path) Then
   Refuse "Fichier introuvable sur cet ordinateur :" & vbCrLf & path
 End If
 
-' 3. Liste des fichiers deja autorises (un chemin par ligne)
-listFile = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "applis-autorisees.txt")
+' 3. Liste des fichiers autorises (un chemin par ligne, ecrite par vous)
 
 ' Lit la liste : UTF-16 (avec BOM) ou UTF-8 (format du Bloc-notes)
 Function ReadList()
@@ -161,16 +181,7 @@ If Not IsAllowed(path) Then
             listFile & vbCrLf & vbCrLf & _
             "Si vous n'avez pas clique sur une carte du WebOrganizer, n'ajoutez rien." & vbCrLf & vbCrLf & _
             "Ouvrir la liste dans le Bloc-notes ?", _
-            vbYesNo + vbExclamation + vbDefaultButton2, TITRE) = vbYes Then
-    If Not fso.FileExists(listFile) Then
-      Dim ts2
-      Set ts2 = fso.CreateTextFile(listFile, False, True)
-      ts2.WriteLine "; Applications que le WebOrganizer peut ouvrir : un chemin complet par ligne."
-      ts2.WriteLine "; (Maj + clic droit sur le raccourci > Copier en tant que chemin d'acces, puis coller)"
-      ts2.Close
-    End If
-    CreateObject("WScript.Shell").Run "notepad.exe """ & listFile & """", 1, False
-  End If
+            vbYesNo + vbExclamation + vbDefaultButton2, TITRE) = vbYes Then OpenList
   WScript.Quit 4
 End If
 

@@ -16,6 +16,25 @@ export const appUrl = path => 'weborgapp:' + encodeURIComponent(path);
 // Nom du fichier sans son extension (« PMU Placé » pour …\PMU Placé.lnk).
 export const appName = path => (path.split('\\').pop() || '').replace(/\.[^.]+$/, '');
 
+// Bouton « Autoriser sur cet ordinateur » : copie le chemin puis ouvre la liste des
+// applications autorisées dans le Bloc-notes (weborgapp:liste). La page n'écrit rien
+// dans la liste : c'est l'utilisateur qui colle et enregistre, sinon n'importe quel
+// site pourrait en faire autant.
+export async function allowOnThisComputer(path) {
+  if (!APP_PATH_RE.test(path)) {
+    toast('Indiquez d’abord un chemin valide (ex. C:\\Dossier\\Appli.lnk).', { kind: 'warn' });
+    return;
+  }
+  let copied = true;
+  try { await navigator.clipboard.writeText(path); } catch { copied = false; }
+  window.location.href = 'weborgapp:liste';
+  toast(copied
+    ? h('span', {}, 'Chemin copié. Dans le Bloc-notes qui s’ouvre : ', h('b', {}, 'Ctrl+V'),
+      ' sur une nouvelle ligne, puis ', h('b', {}, 'Ctrl+S'), '.')
+    : h('span', {}, 'Copie impossible : collez vous-même ce chemin dans le Bloc-notes, puis enregistrez : ', h('code', {}, path)),
+  { kind: copied ? 'ok' : 'warn', timeout: 12000 });
+}
+
 export function openLocalApp(card) {
   const path = cleanAppPath(card.appPath);
   if (!APP_PATH_RE.test(path)) {
