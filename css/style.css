@@ -602,10 +602,15 @@ body.editing .board { padding-right: calc(clamp(16px, 4vw, 48px) + min(400px, 10
   display: grid; gap: 10px; margin: 0 -6px 14px; padding: 12px 14px 14px;
   border-radius: 12px; border: 1px solid rgba(var(--tone), 0.55); border-left: 4px solid rgb(var(--tone));
   /* Fond teinté à la couleur du niveau (orange, turquoise, rose) : la section se distingue du panneau. */
-  background: linear-gradient(160deg, rgba(var(--tone), 0.30), rgba(var(--tone), 0.16));
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  background: linear-gradient(160deg, rgba(var(--tone), 0.62), rgba(var(--tone), 0.42));
+  border: 2px solid rgb(var(--tone)); border-left-width: 6px;
+  box-shadow: 0 0 0 3px rgba(var(--tone), 0.25), 0 6px 18px rgba(0, 0, 0, 0.35);
 }
-.context-box .own-opacity { background: rgba(0, 0, 0, 0.18); }
+.context-box .context-kind { color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5); }
+.context-box .context-where { color: rgba(255, 255, 255, 0.85); }
+.context-box .own-opacity { background: rgba(0, 0, 0, 0.32); }
+.context-box .btn.danger { background: rgba(0, 0, 0, 0.3); }
+.context-box .btn.danger:hover { background: rgba(120, 20, 20, 0.6); }
 .context-group { --tone: 120, 200, 210; }
 .context-card { --tone: 230, 140, 170; }
 .context-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
