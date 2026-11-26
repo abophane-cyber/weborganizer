@@ -13,4 +13,4 @@ Windows Registry Editor Version 5.00
 [HKEY_CURRENT_USER\Software\Classes\weborgapp\shell\open]
 
 [HKEY_CURRENT_USER\Software\Classes\weborgapp\shell\open\command]
-@="\"C:\Windows\System32\wscript.exe\" \"C:\WebOrganizer\applilocale.vbs\" \"%1\""
+@="\"C:\\Windows\\System32\\wscript.exe\" \"C:\\WebOrganizer\\applilocale.vbs\" \"%1\""
