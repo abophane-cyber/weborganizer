@@ -1,6 +1,8 @@
 # Publie le site sur GitHub Pages à chaque push sur main.
 # Il copie les fichiers du site, les numérote (scripts/stamp-version.mjs) pour que
 # les navigateurs ne mélangent jamais deux versions, puis les publie.
+# Deux tâches (préparer, puis publier), comme le modèle officiel de GitHub :
+# la publication ne cherche l'archive qu'une fois la première tâche terminée.
 name: Publier sur GitHub Pages
 
 on:
@@ -15,14 +17,11 @@ permissions:
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
 
@@ -39,5 +38,12 @@ jobs:
         with:
           path: _site
 
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v5
