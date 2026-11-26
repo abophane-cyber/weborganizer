@@ -5,9 +5,9 @@
 '
 '  Securite : un site web peut appeler ce protocole. Le script n'ouvre donc
 '  qu'un fichier local (lecteur C:, D:...) existant, de type .lnk, .exe,
-'  .url ou .appref-ms, SANS aucun argument. La premiere fois qu'un fichier est
-'  demande, Windows demande votre accord ; il est ensuite memorise dans
-'  applis-autorisees.txt (a cote de ce script).
+'  .url ou .appref-ms, SANS aucun argument, et SEULEMENT s'il figure dans
+'  applis-autorisees.txt (a cote de ce script) : liste que vous remplissez
+'  vous-meme dans le Bloc-notes. Aucun site ne peut y ajouter un fichier.
 '  (script .vbs : aucune fenetre noire ne s'affiche)
 ' ============================================================
 Option Explicit
@@ -110,33 +110,68 @@ End If
 ' 3. Liste des fichiers deja autorises (un chemin par ligne)
 listFile = fso.BuildPath(fso.GetParentFolderName(WScript.ScriptFullName), "applis-autorisees.txt")
 
-Function IsAllowed(p)
-  Dim ts, line
-  IsAllowed = False
+' Lit la liste : UTF-16 (avec BOM) ou UTF-8 (format du Bloc-notes)
+Function ReadList()
+  Dim st, bom, charset
+  ReadList = ""
   If Not fso.FileExists(listFile) Then Exit Function
-  Set ts = fso.OpenTextFile(listFile, 1, False, -1)
-  Do While Not ts.AtEndOfStream
-    line = Trim(ts.ReadLine)
-    If LCase(line) = LCase(p) Then IsAllowed = True
-  Loop
-  ts.Close
+  Set st = CreateObject("ADODB.Stream")
+  st.Type = 1
+  st.Open
+  st.LoadFromFile listFile
+  charset = "utf-8"
+  If st.Size >= 2 Then
+    bom = st.Read(2)
+    If AscB(MidB(bom, 1, 1)) = &HFF And AscB(MidB(bom, 2, 1)) = &HFE Then charset = "unicode"
+  End If
+  st.Close
+  Set st = CreateObject("ADODB.Stream")
+  st.Type = 2
+  st.Charset = charset
+  st.Open
+  st.LoadFromFile listFile
+  ReadList = st.ReadText
+  st.Close
+End Function
+
+' Le chemin est-il dans la liste ? (un chemin par ligne, guillemets acceptes,
+' lignes commencant par ; ignorees, majuscules indifferentes)
+Function IsAllowed(p)
+  Dim lines, line
+  IsAllowed = False
+  lines = Split(Replace(ReadList(), vbCr, ""), vbLf)
+  For Each line In lines
+    line = Trim(line)
+    If Len(line) > 0 Then
+      If AscW(Left(line, 1)) = &HFEFF Then line = Mid(line, 2)
+    End If
+    If Len(line) >= 2 Then
+      If Left(line, 1) = """" And Right(line, 1) = """" Then line = Trim(Mid(line, 2, Len(line) - 2))
+    End If
+    If line <> "" And Left(line, 1) <> ";" And LCase(line) = LCase(p) Then IsAllowed = True
+  Next
 End Function
 
 If Not IsAllowed(path) Then
-  If MsgBox("Le WebOrganizer demande a ouvrir :" & vbCrLf & vbCrLf & path & vbCrLf & vbCrLf & _
-            "Autoriser cette application ? (votre choix sera memorise)" & vbCrLf & _
-            "Si vous n'avez pas clique sur une carte du WebOrganizer, repondez Non.", _
-            vbYesNo + vbQuestion + vbDefaultButton2, TITRE) <> vbYes Then
-    WScript.Quit 4
+  ' Volontairement aucun bouton "Autoriser" : un site ne doit pas pouvoir obtenir
+  ' un accord d'un simple clic. On propose seulement d'ouvrir la liste.
+  If MsgBox("Cette application n'est pas dans votre liste :" & vbCrLf & vbCrLf & _
+            path & vbCrLf & vbCrLf & _
+            "Pour l'autoriser, ajoutez vous-meme ce chemin sur une ligne du fichier :" & vbCrLf & _
+            listFile & vbCrLf & vbCrLf & _
+            "Si vous n'avez pas clique sur une carte du WebOrganizer, n'ajoutez rien." & vbCrLf & vbCrLf & _
+            "Ouvrir la liste dans le Bloc-notes ?", _
+            vbYesNo + vbExclamation + vbDefaultButton2, TITRE) = vbYes Then
+    If Not fso.FileExists(listFile) Then
+      Dim ts2
+      Set ts2 = fso.CreateTextFile(listFile, False, True)
+      ts2.WriteLine "; Applications que le WebOrganizer peut ouvrir : un chemin complet par ligne."
+      ts2.WriteLine "; (Maj + clic droit sur le raccourci > Copier en tant que chemin d'acces, puis coller)"
+      ts2.Close
+    End If
+    CreateObject("WScript.Shell").Run "notepad.exe """ & listFile & """", 1, False
   End If
-  Dim ts2
-  If fso.FileExists(listFile) Then
-    Set ts2 = fso.OpenTextFile(listFile, 8, False, -1)
-  Else
-    Set ts2 = fso.CreateTextFile(listFile, False, True)
-  End If
-  ts2.WriteLine path
-  ts2.Close
+  WScript.Quit 4
 End If
 
 ' 4. Ouvrir le fichier comme un double-clic (sans argument)

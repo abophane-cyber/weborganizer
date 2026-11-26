@@ -70,24 +70,31 @@ Cela passe par un second protocole, `weborgapp:`, installé de la même façon.
 
 1. Copiez **`applilocale.vbs`** dans `C:\WebOrganizer\` (à côté de `chromeprofile.vbs`).
 2. Double-cliquez sur **`installer-applis.reg`**, puis acceptez les messages de Windows.
-3. Dans le WebOrganizer, créez une carte de type **« Application de l'ordinateur »** et
-   collez le chemin : dans l'Explorateur, **Maj + clic droit** sur le raccourci →
-   **« Copier en tant que chemin d'accès »** (les guillemets sont retirés automatiquement).
-4. Au premier clic, Chrome demande « Ouvrir wscript.exe ? » : cochez **« Toujours
-   autoriser »** puis **Ouvrir**. Windows demande ensuite **une seule fois par application**
-   si vous l'autorisez.
+3. Copiez le chemin de l'application : dans l'Explorateur, **Maj + clic droit** sur le
+   raccourci → **« Copier en tant que chemin d'accès »**.
+4. **Autorisez-la** : ouvrez `C:\WebOrganizer\applis-autorisees.txt` dans le Bloc-notes
+   (créez-le s'il n'existe pas), collez le chemin sur une nouvelle ligne et enregistrez.
+   Les guillemets sont acceptés ; une ligne qui commence par `;` est un commentaire.
+5. Dans le WebOrganizer, créez une carte de type **« Application de l'ordinateur »** et
+   collez le même chemin.
+6. Au premier clic, Chrome demande « Ouvrir wscript.exe ? » : cochez **« Toujours
+   autoriser »** puis **Ouvrir**.
+
+Si vous oubliez l'étape 4, un message l'indique au clic et propose d'ouvrir la liste dans
+le Bloc-notes.
 
 ## Sécurité
 
 N'importe quel site peut tenter d'appeler `weborgapp:`. Le script `applilocale.vbs` :
+- n'ouvre **que les fichiers que vous avez écrits vous-même** dans
+  `C:\WebOrganizer\applis-autorisees.txt`. Il n'y a **aucun bouton « Autoriser »** : un
+  site ne peut donc rien ajouter à cette liste, même si vous cliquez par erreur ;
 - n'accepte qu'un **fichier existant sur un lecteur de cet ordinateur** (`C:\…`, pas de
-  chemin réseau `\serveur\…`) de type `.lnk`, `.exe`, `.url` ou `.appref-ms` ;
-- l'ouvre **sans aucun argument** (comme un double-clic) ;
-- **demande votre accord** la première fois pour chaque fichier, puis le mémorise dans
-  `C:\WebOrganizer\applis-autorisees.txt` (supprimez une ligne pour retirer l'accord).
+  chemin réseau `\\serveur\…`) de type `.lnk`, `.exe`, `.url` ou `.appref-ms` ;
+- l'ouvre **sans aucun argument** (comme un double-clic).
 
-Si une demande d'autorisation apparaît alors que vous n'avez pas cliqué sur une carte,
-répondez **Non**.
+Au pire, un site malveillant pourrait donc ouvrir l'une des applications de votre liste.
+Supprimez une ligne de la liste pour retirer l'accord.
 
 ## Désinstallation
 

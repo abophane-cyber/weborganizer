@@ -374,6 +374,7 @@ function cardForm(card, location, onSave) {
     field('Chemin de l’application', appPath,
       'Dans l’Explorateur, faites Maj + clic droit sur le raccourci (.lnk) ou le programme (.exe) → '
       + '« Copier en tant que chemin d’accès », puis collez ici. '
+      + 'Collez aussi ce chemin dans C:\\WebOrganizer\\applis-autorisees.txt (Bloc-notes) pour l’autoriser. '
       + 'Nécessite le protocole weborgapp: installé sur cet ordinateur (voir l’installateur des profils Chrome).'),
     appIcon.el,
   );
