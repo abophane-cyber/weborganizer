@@ -121,6 +121,16 @@ copier aussi `applilocale.vbs` dans `C:\WebOrganizer\`, puis double-cliquer sur
 
 ---
 
+## Installer WebOrganizer comme une application (facultatif)
+
+Ouvrez <https://abophane-cyber.github.io/weborganizer/> dans Chrome ou Edge, puis cliquez
+sur l'icône **Installer** à droite de la barre d'adresse (ou menu ⋮ → *Caster, enregistrer
+et partager* → *Installer WebOrganizer*). L'appli s'ouvre alors dans sa propre fenêtre,
+avec son icône dans le menu Démarrer et la barre des tâches. Pour la retirer : dans la
+fenêtre de l'appli, menu ⋮ → *Désinstaller WebOrganizer*.
+
+---
+
 ## Tester sur votre ordinateur (facultatif)
 
 Dans le dossier du projet :
