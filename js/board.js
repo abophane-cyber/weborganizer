@@ -906,23 +906,11 @@ function hookSelection(root) {
   });
 }
 
-// Écran d'une catégorie : le fond de la page prend sa couleur, pour la reconnaître
-// d'un coup d'œil (couleur de la sous-catégorie si elle en a une, sinon de la catégorie).
-function tintBackground(view) {
-  const bg = document.getElementById('bg');
-  if (!bg) return;
-  const hex = c => (/^#[0-9a-f]{6}$/i.test(c || '') ? c : '');
-  const color = view ? hex(view.group?.color) || hex(view.cat.color) : '';
-  if (color) bg.style.setProperty('--view-tint', color);
-  bg.classList.toggle('tinted', !!color);
-}
-
 function drawBoard(root) {
   const cfg = store.get();
   renderDock(cfg);
   const view = currentView(cfg);
   document.body.classList.toggle('viewing', !!view);
-  tintBackground(view);
   if (view) {
     root.classList.remove('board-free');
     root.replaceChildren(viewEl(view), h('p', { class: 'search-empty', hidden: true }));

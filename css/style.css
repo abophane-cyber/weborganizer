@@ -45,14 +45,6 @@ button, input, select { font: inherit; color: inherit; }
 .bg-image { background: center / cover no-repeat; }
 .bg-video { object-fit: cover; }
 #bg-overlay { position: absolute; inset: 0; background: #000; opacity: 0.35; pointer-events: none; }
-/* Écran d'une catégorie : le fond prend sa couleur (ou celle de la sous-catégorie). */
-#bg-tint {
-  position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s ease;
-  background: linear-gradient(160deg, color-mix(in srgb, var(--view-tint, #000) 70%, transparent),
-    color-mix(in srgb, var(--view-tint, #000) 45%, transparent));
-}
-#bg.tinted #bg-tint { opacity: 1; }
-@media (prefers-reduced-motion: reduce) { #bg-tint { transition: none; } }
 
 /* ---- En-tête ---- */
 .top {
