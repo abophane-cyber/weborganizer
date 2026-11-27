@@ -1,6 +1,6 @@
 // Service worker : met l'application en cache pour un affichage hors connexion.
 // Stratégie "réseau d'abord" : les mises à jour du site arrivent dès qu'on est en ligne.
-const CACHE = 'weborganizer-v13';
+const CACHE = 'weborganizer-v14';
 const ASSETS = [
   './', './index.html', './css/style.css', './manifest.webmanifest',
   './icons/icon-192.png', './icons/icon-512.png', './icons/icon-maskable-512.png',

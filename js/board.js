@@ -997,14 +997,51 @@ function applySearch(root) {
   root.querySelector('.search-empty').hidden = !(words.length && shown === 0);
 }
 
+// ---- Recherche sur le Web ----
+// « g mots » force Google ; une adresse seule (ex. youtube.com) s'ouvre directement.
+const GOOGLE_PREFIX = /^g\s+/i;
+const looksLikeUrl = s => /^(https?:\/\/)?[\w-]+(\.[\w-]+)+(:\d+)?(\/\S*)?$/i.test(s) && !/\s/.test(s);
+
+function webTarget(q) {
+  const text = q.trim().replace(GOOGLE_PREFIX, '').trim();
+  if (!text) return null;
+  if (!GOOGLE_PREFIX.test(q.trim()) && looksLikeUrl(text)) {
+    return { url: /^https?:\/\//i.test(text) ? text : `https://${text}`, label: `Ouvrir ${text}` };
+  }
+  return { url: `https://www.google.com/search?q=${encodeURIComponent(text)}`, label: `Rechercher « ${text} » sur Google` };
+}
+
+// Nouvel onglet, au premier plan (ouvert depuis le clic ou la touche Entrée).
+function openWeb(q) {
+  const t = webTarget(q);
+  if (!t) return;
+  const a = document.createElement('a');
+  a.href = t.url; a.target = '_blank'; a.rel = 'noopener noreferrer';
+  a.click();
+}
+
 export function initSearch(input, root) {
-  input.addEventListener('input', () => { query = input.value; applySearch(root); });
+  const webBtn = document.getElementById('web-search');
+  const syncWebBtn = () => {
+    if (!webBtn) return;
+    const t = webTarget(query);
+    webBtn.hidden = !t;
+    if (t) webBtn.textContent = `${t.label}  ↵`;
+  };
+  const reset = () => { input.value = ''; query = ''; applySearch(root); syncWebBtn(); };
+  webBtn?.addEventListener('mousedown', e => e.preventDefault()); // garde le focus dans la barre
+  webBtn?.addEventListener('click', () => { openWeb(query); reset(); });
+
+  input.addEventListener('input', () => { query = input.value; applySearch(root); syncWebBtn(); });
   input.addEventListener('keydown', e => {
-    if (e.key === 'Escape') { input.value = ''; query = ''; applySearch(root); input.blur(); }
-    if (e.key === 'Enter') {
-      // Entrée : ouvre la première carte trouvée.
+    if (e.key === 'Escape') { reset(); input.blur(); }
+    if (e.key === 'Enter' && query.trim()) {
+      e.preventDefault();
+      // Entrée : ouvre la première carte trouvée ; sinon (ou avec Maj, ou « g … ») recherche sur le Web.
       const first = [...root.querySelectorAll('.card:not(.add-card)')].find(c => c.offsetParent);
-      if (first && query.trim()) { e.preventDefault(); first.click(); }
+      const forceWeb = e.shiftKey || GOOGLE_PREFIX.test(query.trim());
+      if (first && !forceWeb) first.click();
+      else { openWeb(query); reset(); }
     }
   });
   // Touche « / » : place le curseur dans la recherche (hors champs de saisie).
