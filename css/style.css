@@ -584,6 +584,9 @@ body.editing .board { padding-right: calc(clamp(16px, 4vw, 48px) + min(400px, 10
   padding: 16px 0 10px; background: rgba(22, 26, 34, 0.98);
 }
 .settings-head h2 { margin: 0; font-size: 1.15rem; }
+.settings-title { display: flex; align-items: center; gap: 6px; }
+.settings-back { margin-left: -8px; }
+.settings-back:disabled { opacity: .35; cursor: default; }
 /* Chaque section dans son encadré, avec sa propre nuance de fond */
 .settings-section {
   --tone: 110, 168, 254;

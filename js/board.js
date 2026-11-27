@@ -148,6 +148,14 @@ export function openView(catId, groupId = '') {
   scrollTo(0, 0);
 }
 
+// Affiche un écran donné ({ catId, groupId } ou null pour la page d'accueil).
+export function showView(v) {
+  clearSearch();
+  history.pushState(v ? { wo: true } : null, '', v ? `#c/${enc(v.catId)}${v.groupId ? `/${enc(v.groupId)}` : ''}` : pageUrl());
+  renderBoard(boardRoot());
+  scrollTo(0, 0);
+}
+
 function goBack(view) {
   // Écran ouvert depuis la page : on revient simplement en arrière dans l'historique.
   if (history.state?.wo) { history.back(); return; }

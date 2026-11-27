@@ -7,7 +7,7 @@ import { addMediaFile, isMediaRef, mediaInfo } from './media.js';
 import { kindFor } from './background.js';
 import { exportZip, importZip } from './transfer.js';
 import { imageField } from './modal.js';
-import { measurePositions, openView } from './board.js';
+import { measurePositions, openView, showView } from './board.js';
 import * as selection from './selection.js';
 import * as actions from './actions.js';
 import { colorInput } from './actions.js';
@@ -538,9 +538,17 @@ function levelSections() {
 
 export function initSettings() {
   panel = document.getElementById('settings');
+  // Flèche « retour » : revient à l'écran d'édition précédent (écran et élément choisi).
+  const back = h('button', {
+    type: 'button', class: 'icon-btn settings-back', 'aria-label': 'Revenir à l’écran précédent',
+    title: 'Revenir à l’écran précédent', onclick: () => selection.goBack(showView),
+  }, svgIcon('left'));
+  const syncBack = () => { back.disabled = !selection.canGoBack(); };
+  selection.onChange(syncBack);
+  syncBack();
   panel.append(
     h('header', { class: 'settings-head' },
-      h('h2', {}, 'Paramètres'),
+      h('div', { class: 'settings-title' }, back, h('h2', {}, 'Paramètres')),
       h('button', { type: 'button', class: 'icon-btn settings-close', 'aria-label': 'Fermer les paramètres', onclick: () => toggle(false) }, svgIcon('close')),
     ),
     h('p', { class: 'muted small edit-hint' }, 'Mode édition actif : sur la page, les flèches déplacent et la corbeille supprime.'),

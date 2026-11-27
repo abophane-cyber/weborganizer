@@ -6,7 +6,38 @@ let view = null;       // écran ouvert : { catId, groupId } ou null
 let viewKey = '';
 const subs = new Set();
 
-const emit = () => subs.forEach(fn => fn());
+// Historique des écrans d'édition (écran ouvert + élément choisi), pour la flèche
+// « retour » des Paramètres. Pendant un retour, rien n'est ajouté à l'historique.
+const past = [];
+let current = null;
+let restoring = false;
+const sameState = (a, b) => !!a && !!b && (a.view ? `${a.view.catId}/${a.view.groupId || ''}` : '')
+  === (b.view ? `${b.view.catId}/${b.view.groupId || ''}` : '')
+  && (a.sel ? same(a.sel, b.sel) : !b.sel);
+function record() {
+  if (restoring) return;
+  const state = { view, sel };
+  if (sameState(state, current)) return;
+  if (current) past.push(current);
+  if (past.length > 50) past.shift();
+  current = state;
+}
+const emit = () => { record(); subs.forEach(fn => fn()); };
+
+export const canGoBack = () => past.length > 0;
+// Revient à l'écran précédent : navigate(view) affiche l'écran demandé (ou l'accueil).
+export function goBack(navigate) {
+  const prev = past.pop();
+  if (!prev) return;
+  restoring = true;
+  try {
+    const key = prev.view ? `${prev.view.catId}/${prev.view.groupId || ''}` : '';
+    if (key !== viewKey) navigate(prev.view);
+    sel = prev.sel;
+    current = prev;
+  } finally { restoring = false; }
+  subs.forEach(fn => fn());
+}
 
 export const get = () => sel;
 export const getView = () => view;
